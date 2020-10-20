@@ -2,8 +2,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-import scripts.utilities as util
-import scripts.statistics_tools as st
+import lib.utilities as util
+import lib.statistics_tools as st
 
 
 def test_4momentum():
@@ -24,10 +24,10 @@ def test_4momentum():
 def test_KL_div():
     mu1 = 0
     mu2 = 0
-    sig1 = 0.1
-    sig2 = 0.2
-    N_sampl = int(1e4)
-    n_bins = 15
+    sig1 = 1
+    sig2 = 2
+    N_sampl = 100_000
+    n_bins = 130
     dkl_analytical = ((sig1/sig2)**2 + (mu1 - mu2)**2 / sig2**2 - 1 + np.log(sig2**2/sig1**2))/2.
 
     print("# samples: %d"%N_sampl)
@@ -37,8 +37,8 @@ def test_KL_div():
     avg_dkl = 0
     N = 5
     for i in range(N):
-        p = st.sample_normal(mu1, sig1, N_sampl, n_bins, density=True)
-        q = st.sample_normal(mu2, sig2, N_sampl, n_bins, density=True)
+        p = st.sample_normal(mu1, sig1, N_sampl, n_bins, -15, 15, density=True)
+        q = st.sample_normal(mu2, sig2, N_sampl, n_bins, -15, 15, density=True)
         dkl_numeric = st.KL_div(p, q)
         avg_dkl += dkl_numeric
         print(dkl_numeric)
@@ -46,11 +46,16 @@ def test_KL_div():
     avg_dkl /= N
     print("Average D_KL: %f"%avg_dkl)
 
+
 def test_plot():
     x = np.linspace(0, 2*np.pi)
     y = np.exp(-x)
 
-    counts, bins = st.sample_normal(0, 0.1, 10000, 30, density=True)
+    counts, bins = st.sample_normal(0, 1, 1_000_000, 180, density=True)
+
+    while 0 in counts:
+        i = list(counts).index(0.)
+        counts, bins = st.combine_two_bins(counts, bins, i)
     
     #Create plot object
     xlabel = "GeV"
@@ -65,6 +70,7 @@ def test_plot():
 
     plot.plot_all()
     plot.display()
+
 
 spacer = 20*'-'
 

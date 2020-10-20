@@ -37,7 +37,6 @@ class FourMomentum:
         """
         Define addition between two FourMomentum objects p1 and p2 (p1 + p2)
         """
-        p1 = self.three_momentum()
         new_p = FourMomentum()
         new_p.e = self.e + p.e
         new_p.px = self.px + p.px
@@ -46,11 +45,14 @@ class FourMomentum:
         return new_p
 
     def __sub__(self, p):
+        """
+        Define subtraction between two FourMomentum objects p1 and p2 (p1 - p2)
+        """
         return self + (-1.0 * p)
 
     def norm(self):
         """
-        The Minkowski norm of a four vector
+        The Minkowski norm of a four vector p: sqrt(p * p)
         """
         return np.sqrt(self * self)
 
@@ -62,7 +64,9 @@ class FourMomentum:
 
     def transverse_momentum(self, vector_out=False):
         """
-        Get transverse momentum pT (assuming transverse plane is orthogonal to z-axis)
+        Get transverse momentum pT (transverse plane orthogonal to z-axis is conventional)
+
+        Can return components or the magnitude.
         """
         p = np.array([self.px, self.py])
 
@@ -72,15 +76,21 @@ class FourMomentum:
             return np.linalg.norm(p) 
 
     def print(self, unit_e='', unit_p=''):
+        """
+        A method to print the FourMomentum in a nice way (with units of choice)
+        """
         for mu in ['e','px','py','pz']:
             attribute = getattr(self, mu)
             if mu == 'e':
-                print("%s: %e %s" %(mu, attribute, unit_e))
+                print(" %s: %e %s" %(mu, attribute, unit_e))
             else:
                 print("%s: %e %s" %(mu, attribute, unit_p))
 
     @staticmethod
     def from_LHEparticle(lhe_particle):
+        """
+        Construct a FourMomentum object from a pyhle-particle object (see py-module "Pylhe" by H. Lukas.)
+        """
         e = lhe_particle.e
         px = lhe_particle.px
         py = lhe_particle.py
@@ -92,8 +102,8 @@ class FourMomentum:
 def invariant_mass(particle_momenta):
     """
     :param particle_momenta: list of FourMomentum objects
-    :return: invariant mass of particle 1, particle 2, particle 3, ... 
-    [ M = sqrt((e1+e2+...)**2 - (p1+p2+...)**2) ]
+    
+    :return: invariant mass of particle 1, particle 2, particle 3, ... [ M = sqrt((e1+e2+...)**2 - (p1+p2+...)**2) ]
     """
     total_momentum = FourMomentum() # Null vector
     for p in particle_momenta:
@@ -118,7 +128,7 @@ def get_final_state_events(file, particle_ids):
     :param particle_ids: list of the particle ID's of interest (which final 
     state particles you're interested in). For instance: selektron+ has id 1000011 
 
-    :return: an MxN matrix with m events and the n final-state particles of interest, number of events
+    :return: an MxN 2D array with M events and the N final-state particles of interest, number of events
     """
     matrix = []
     n_events = 0
