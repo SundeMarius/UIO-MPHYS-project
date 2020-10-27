@@ -25,7 +25,7 @@ def combine_two_bins(count, bin_edges, i):
     width_right = new_bins[(i+1)%N] - new_bins[i]
 
     width = new_bins[i] - new_bins[i-1]
-    # Combine bin i with the smallest of the neighbor bins.
+    # Combine bin i with the smallest of the neighbor bins (then scale it with the average count value between those two).
     if bin_right >= bin_left or bin_right == 0:
         new_bins.pop(i-1)
         new_count[i-1] *= width_left/(width + width_left)
@@ -43,8 +43,8 @@ def combine_two_bins(count, bin_edges, i):
 # Kullback-Leibler divergence
 def KL_div(P, Q, base_two=False):
     """
-    :param P: normalised numpy.histogram object (bins sum to 1)
-    :param Q: normalised numpy.histogram object (bins sum to 1)
+    :param P: numpy.histogram object (bins sum to 1)
+    :param Q: numpy.histogram object (bins sum to 1)
     :param base_two: Set True if you want rel.entr in #bits (default is #nats)
     
     :return : The Kullback-Leibler divergence (avg. relative entropy) between the two input distributions 
@@ -55,7 +55,7 @@ def KL_div(P, Q, base_two=False):
 
     # Check if Q-histogram contains empty bins. Resize bins in P and Q if so.
     while 0 in Q_count:
-        i = list(Q_count).index(0.)
+        i = list(Q_count).index(0)
         Q_count, Q_bins = combine_two_bins(Q_count, Q_bins, i)
         
         #Do the same change in P-histogram
@@ -63,7 +63,7 @@ def KL_div(P, Q, base_two=False):
     
     # Check P-histogram as well     
     while 0 in P_count:
-        i = list(P_count).index(0.)
+        i = list(P_count).index(0)
         P_count, P_bins = combine_two_bins(P_count, P_bins, i)
         
         #Do the same change in Q-histogram
@@ -87,7 +87,7 @@ def KL_div(P, Q, base_two=False):
 
     #Calculate KL-divergence and return the value
     rel_entropy_array = rel_entr(P_count, Q_count)
-    kl_d = np.sum(rel_entropy_array) 
+    kl_d = np.sum(rel_entropy_array * np.diff(P_bins)) 
     
     if base_two:
         return kl_d/np.log(2.)

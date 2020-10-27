@@ -83,21 +83,21 @@ for f, filename in enumerate(filenames):
         np.savetxt(res_file, inv_mass, fmt='%e', header="Invariant mass of the %d final state particles of this process"%n_particles)
         print("Stored calculations in %s"%res_file)
 
-    counts, bins = np.histogram(inv_mass, bins='auto')
+    counts, bins = np.histogram(inv_mass, bins=120)
     histograms.append([counts, bins])
     
     #Add histogram to plot
     plot.add_histogram(counts, bins, label=labels[f], alpha=.5)
 
 # Calculate KL-divergence between LO and NLO distributions
-LO_hist = histograms[0]  # tuple (count, bin_edges)
-NLO_hist = histograms[1]  # tuple (count, bin_edges)
+LO_hist = histograms[0]  # tuple (count, bin_edges), Q-distribution representing the model
+NLO_hist = histograms[1]  # tuple (count, bin_edges), P-distribution representing the data
 
 # Normalise them before doing KL-div (unecessary since KL_div function does this already)
 LO_hist[0] = LO_hist[0]/np.sum(LO_hist[0] * np.diff(LO_hist[1]))
 NLO_hist[0] = NLO_hist[0]/np.sum(NLO_hist[0] * np.diff(NLO_hist[1]))
 
-kl_div = st.KL_div(LO_hist, NLO_hist)
+kl_div = st.KL_div(NLO_hist, LO_hist)
 print("KL-divergence between LO and NLO distributions: %1.4f"%kl_div)
 
 # Plot data
