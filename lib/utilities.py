@@ -111,43 +111,46 @@ def invariant_mass(particle_momenta):
     return total_momentum.norm()
 
 
-def is_onshell(p, m, tol=1e-1):
+def is_onshell(p, m, rtol=1e-2):
     """
     :param p: FourMomentum object (of some particle)
     :param m: mass of particle
     :param tol: tolerance to be on-shell
     :return: True if onshell, False otherwise
     """
-    return np.abs(p.norm() - m) <= tol
+    return np.isclose(p.norm(), m, rtol=rtol)
 
 
 # LHE file tools
 def get_final_state_events(file, particle_ids):
     """
     :param file: the path to the LHE-file with events
-    :param particle_ids: list of the particle ID's of interest (which final 
+    :param particle_ids: list of PDG particle ID's of interest (which final 
     state particles you're interested in). For instance: selektron+ has id 1000011 
 
-    :return: an MxN 2D array with M events and the N final-state particles of interest, number of events
+    :return: an MxN 2D array with M events and the N final-state particles of interest [list], occurences of each particle [dict]
     """
     matrix = []
-    n_events = 0
     events = lhe.readLHE(file)
     for e in events:
         particles = []
-        event_particles = {int(p.id) : p for p in e.particles}
+        event_particles = { id : [] for id in [p.id for p in e.particles] }
+        for p in e.particles:
+            if p.id in particle_ids:
+                event_particles[int(p.id)].append(p)
+
         event_ids = list(event_particles)
         for fs_id in particle_ids:
             if fs_id in event_ids:
-                particles.append(event_particles[int(fs_id)])  
+                particles.append(event_particles[int(fs_id)])
             else:
                 print("Error: Could not find particle %s in %s, event %d"%(fs_id, file, n_events+1))
                 exit(1)
-                
-        matrix.append(particles)
-        n_events += 1
 
-    return matrix, n_events
+        #Each row element in matrix is stored as a list (to account for potential duplicate particles)
+        matrix.append(particles)
+
+    return matrix
 
 
 # Plotting tools

@@ -43,13 +43,13 @@ def combine_two_bins(count, bin_edges, i):
 # Kullback-Leibler divergence
 def KL_div(P, Q, base_two=False):
     """
-    :param P: numpy.histogram object (bins sum to 1)
-    :param Q: numpy.histogram object (bins sum to 1)
-    :param base_two: Set True if you want rel.entr in #bits (default is #nats)
+    :param P: numpy.histogram object
+    :param Q: numpy.histogram object
+	:param base_two: Set True if you want rel.entr in #bits (default: False gives #nats)
     
     :return : The Kullback-Leibler divergence (avg. relative entropy) between the two input distributions 
+    (divergence/information gain going from Q to P)
     """
-    #TODO Consider using Gaussian Smoothing to calculate KL_div (solves unequal number of bins problem).
     P_count, P_bins = P
     Q_count, Q_bins = Q
 
@@ -76,15 +76,6 @@ def KL_div(P, Q, base_two=False):
     Q_count = Q_count/Q_sum
     P_count = P_count/P_sum
 
-    """
-    P_sum = np.sum(P_count * np.diff(P_bins))
-    Q_sum = np.sum(Q_count * np.diff(Q_bins))
-    if not np.isclose(P_sum, 1., rtol=1e-3):
-        raise Exception("Error: P histogram is not normalised (sum=%1.4f)"%P_sum)
-    if not np.isclose(Q_sum, 1., rtol=1e-3):
-        raise Exception("Error: Q histogram is not normalised (sum=%1.4f)"%Q_sum)
-    """
-
     #Calculate KL-divergence and return the value
     rel_entropy_array = rel_entr(P_count, Q_count)
     kl_d = np.sum(rel_entropy_array * np.diff(P_bins)) 
@@ -106,6 +97,10 @@ def sample_normal(mu, sigma, n_samples, n_bins, x_min=0, x_max=0, density=False)
     :param sigma: stddev of gaussian (scalar or array in mul.dim)
     :param n_samples: number of samples
     :param n_bins: number of bins
+	:param x_min: the lower limit of the sample range
+	:param x_max: the upper limit of the sample range
+	:param density: to normalize the sample output or not (default: False)
+
     :return: count_array, bins (right edge values) 
     """
     s = np.random.normal(loc=mu, scale=sigma, size=n_samples)

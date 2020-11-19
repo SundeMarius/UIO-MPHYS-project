@@ -22,12 +22,12 @@ def test_4momentum():
 
 
 def test_KL_div():
-    mu1 = 0
-    mu2 = 0
-    sig1 = 2
-    sig2 = 5
-    N_sampl = 10_000_000
-    n_bins = 3100
+    mu1 = 3
+    mu2 = 2
+    sig1 = 1
+    sig2 = 1
+    N_sampl = 1_000_000
+    n_bins = 25
     dkl_analytical = ((sig1/sig2)**2 + (mu1 - mu2)**2 / sig2**2 - 1 + np.log(sig2**2/sig1**2))/2.
 
     print("# samples: %d"%N_sampl)
@@ -37,8 +37,8 @@ def test_KL_div():
     avg_dkl = 0
     N = 10
     for i in range(N):
-        p = st.sample_normal(mu1, sig1, N_sampl, n_bins)
-        q = st.sample_normal(mu2, sig2, N_sampl, n_bins)
+        p = st.sample_normal(mu1, sig1, N_sampl, n_bins, x_min=-5*sig1, x_max=5*sig1)
+        q = st.sample_normal(mu2, sig2, N_sampl, n_bins, x_min=-5*sig2, x_max=5*sig2)
         dkl_numeric = st.KL_div(p, q)
         avg_dkl += dkl_numeric
         print(dkl_numeric)
@@ -51,12 +51,15 @@ def test_plot():
     x = np.linspace(0, 2*np.pi)
     y = np.exp(-x)
 
-    counts, bins = st.sample_normal(0, 1, 100_000, 60, density=True)
+    counts, bins = st.sample_normal(0, 1, 1000, 30)
 
     while 0 in counts:
         i = list(counts).index(0.)
         counts, bins = st.combine_two_bins(counts, bins, i)
-    
+
+	#Normalise histogram
+    counts = counts/np.sum(counts * np.diff(bins))
+
     #Create plot object
     xlabel = "GeV"
     ylabel = "Counts"
