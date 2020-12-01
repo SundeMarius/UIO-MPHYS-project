@@ -17,7 +17,7 @@ if len(sys.argv) < 2:
     exit(1)
 
 # Prepare plot object to visualise result
-x_label=r"Invariant mass of {-11 1000022} [GeV]"
+x_label=r"MET (2 x 1000022) [GeV]"
 y_label=r"Density $[\mathrm{GeV}^{⁻1}]$"
 title=r"$q\bar{q}\rightarrow$ -11 1000022 11 1000022 electroweak s-channel, $\sqrt{s} = 13$TeV"
 labels = ["LO", "NLO"]
@@ -38,7 +38,7 @@ n_files = len(filenames)
 result_filenames = []
 for f, filename in enumerate(filenames):
     file_basename, ext = os.path.splitext(filename)
-    result_filename = file_basename + "_InvMass_" + "_".join([str(i) for i in particle_ids[f]]) + ".storage"
+    result_filename = file_basename + "_met" + ".storage"
     result_filenames.append(result_filename)
 
 # Create list to store histograms
@@ -52,7 +52,7 @@ for f, filename in enumerate(filenames):
     # Check if storage file exists, use that file if so
     if os.path.isfile(res_file):
         print("Reading from %s (%d/%d)" %(res_file, f+1, n_files))
-        inv_mass = np.loadtxt(res_file)    
+        data = np.loadtxt(res_file)    
     else:
         # Open 1by1 LHE-file with *pylhe* and get the final state particles for all events.
         print("Reading from %s (%d/%d)" %(filename, f+1, n_files))
@@ -63,7 +63,7 @@ for f, filename in enumerate(filenames):
         
         print_progress_freq = int(num_events*0.1)
 
-        inv_mass = np.zeros(num_events)
+        data = np.zeros(num_events)
 
         cnt = 0
         for e in events:
@@ -74,25 +74,33 @@ for f, filename in enumerate(filenames):
 
             # Extract particles of interest (as FourMomentum objects)
             event_momenta = []
+            event_ids = event_particles.keys()
             for id in particle_ids[f]:
+                if id not in event_ids:
+                    continue
                 momentum = util.FourMomentum.from_LHEparticles(event_particles[id])
-                event_momenta.append(momentum[0])
+                event_momenta.append(momentum)
     
-            # Do analysis (for instance calculate inv. mass)
-            inv_mass[cnt] = util.invariant_mass(event_momenta)
+            # Do analysis (calculate missing transverse energy of selected particles)
+            pT_tot = 0
+            for p in event_momenta:
+                for particle in p:
+                    pT_tot += particle.transverse_momentum(vector_out=True)
+
+            met = np.linalg.norm(pT_tot)
+            data[cnt] = met
 
             cnt += 1
-
             if not cnt % print_progress_freq:
                 print("%d%s of events processed." %(cnt*100//num_events, "%"))
 
         #Save result to the storage file
-        header = "Invariant mass of " + ", ".join([str(i) for i in particle_ids[f]])
-        np.savetxt(res_file, inv_mass, fmt='%e', header=header)
+        header = "Missing transverse energy (MET) of " + ", ".join([str(i) for i in particle_ids[f]])
+        np.savetxt(res_file, data, fmt='%e', header=header)
         print("Stored calculations in %s"%res_file)
     
     # Create histogram
-    counts, bins = np.histogram(inv_mass, bins=200)
+    counts, bins = np.histogram(data, bins=450)
     if f == 0:
         first_bins = bins
 

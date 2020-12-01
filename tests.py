@@ -22,12 +22,12 @@ def test_4momentum():
 
 
 def test_KL_div():
-    mu1 = 3
-    mu2 = 2
-    sig1 = 1
-    sig2 = 1
-    N_sampl = 1_000_000
-    n_bins = 25
+    mu1 = 0
+    mu2 = 0
+    sig1 = 0.64
+    sig2 = 0.65
+    N_sampl = 1000_000
+    n_bins = 15
     dkl_analytical = ((sig1/sig2)**2 + (mu1 - mu2)**2 / sig2**2 - 1 + np.log(sig2**2/sig1**2))/2.
 
     print("# samples: %d"%N_sampl)
@@ -37,8 +37,8 @@ def test_KL_div():
     avg_dkl = 0
     N = 10
     for i in range(N):
-        p = st.sample_normal(mu1, sig1, N_sampl, n_bins, x_min=-5*sig1, x_max=5*sig1)
-        q = st.sample_normal(mu2, sig2, N_sampl, n_bins, x_min=-5*sig2, x_max=5*sig2)
+        p = st.sample_normal(mu1, sig1, N_sampl, n_bins)
+        q = st.sample_normal(mu2, sig2, N_sampl, n_bins)
         dkl_numeric = st.KL_div(p, q)
         avg_dkl += dkl_numeric
         print(dkl_numeric)

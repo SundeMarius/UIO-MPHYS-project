@@ -97,6 +97,12 @@ class FourMomentum:
         pz = lhe_particle.pz
         return FourMomentum(e, px, py, pz)
 
+    @staticmethod
+    def from_LHEparticles(lhe_particles):
+        """
+        Construct a list of FourMomentum objects from a list of lhe-particles (see py-module "Pylhe" by H. Lukas.)
+        """
+        return [FourMomentum(p.e, p.px, p.py, p.pz) for p in lhe_particles]
 
 # General tools for HEP
 def invariant_mass(particle_momenta):
@@ -122,35 +128,29 @@ def is_onshell(p, m, rtol=1e-2):
 
 
 # LHE file tools
-def get_final_state_events(file, particle_ids):
+def get_final_state_events(file, particle_ids = []):
     """
     :param file: the path to the LHE-file with events
     :param particle_ids: list of PDG particle ID's of interest (which final 
     state particles you're interested in). For instance: selektron+ has id 1000011 
 
-    :return: an MxN 2D array with M events and the N final-state particles of interest [list], occurences of each particle [dict]
+    :return: A list of dictionaries with the final state particles for all events (key: particle id, value: particle(s) as a list). One dictonary for each event
     """
-    matrix = []
+    output = []
     events = lhe.readLHE(file)
     for e in events:
-        particles = []
         event_particles = { id : [] for id in [p.id for p in e.particles] }
+        
         for p in e.particles:
-            if p.id in particle_ids:
-                event_particles[int(p.id)].append(p)
+            event_particles[int(p.id)].append(p)
 
-        event_ids = list(event_particles)
-        for fs_id in particle_ids:
-            if fs_id in event_ids:
-                particles.append(event_particles[int(fs_id)])
-            else:
-                print("Error: Could not find particle %s in %s, event %d"%(fs_id, file, n_events+1))
-                exit(1)
+        if len(particle_ids):
+            event_particles = { id : event_particles[id] for id in event_particles if id in particle_ids }
+         
+        #Each element of output is stored as a list (to account for potential duplicate particles)
+        output.append(event_particles)
 
-        #Each row element in matrix is stored as a list (to account for potential duplicate particles)
-        matrix.append(particles)
-
-    return matrix
+    return output
 
 
 # Plotting tools
