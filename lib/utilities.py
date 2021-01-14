@@ -2,6 +2,12 @@ import numpy as np
 import scipy as sp
 import pylhe as lhe
 import matplotlib.pyplot as plt
+import lib.mssm_particles as mssm
+
+#Global constants
+sep = '-'*25
+pt_cut = 20. #GeV
+
 
 class FourMomentum:
     def __init__(self, e=0, px=0, py=0, pz=0):
@@ -73,9 +79,9 @@ class FourMomentum:
         if vector_out:
             return p
         else:
-            return np.linalg.norm(p) 
+            return np.linalg.norm(p)
 
-    def print(self, unit_e='', unit_p=''):
+    def print(self, unit_e='GeV', unit_p='GeV'):
         """
         A method to print the FourMomentum in a nice way (with units of choice)
         """
@@ -104,11 +110,12 @@ class FourMomentum:
         """
         return [FourMomentum(p.e, p.px, p.py, p.pz) for p in lhe_particles]
 
+
 # General tools for HEP
 def invariant_mass(particle_momenta):
     """
     :param particle_momenta: list of FourMomentum objects
-    
+
     :return: invariant mass of particle 1, particle 2, particle 3, ... [ M = sqrt((e1+e2+...)**2 - (p1+p2+...)**2) ]
     """
     total_momentum = FourMomentum() # Null vector
@@ -127,12 +134,38 @@ def is_onshell(p, m, rtol=1e-2):
     return np.isclose(p.norm(), m, rtol=rtol)
 
 
+def is_jet(particle_id):
+    return abs(particle_id) in mssm.jet_hard
+
+
+def has_physical_jets(event, pt_cut=0):
+    for p in event.particles:
+        pt = FourMomentum.from_LHEparticle(p).transverse_momentum()
+        if pt_cut:
+            if is_jet(p.id) and pt <= pt_cut: return True
+        else:
+            if is_jet(p.id): return True
+
+    return False
+
+
+def get_jets(event, pt_cut=0): #return list of jets
+    jet = []
+
+    if has_physical_jets(event, pt_cut):
+        for p in event.particles:
+            jet.append(p)
+
+    return jet
+
+
 # LHE file tools
+# deprecated
 def get_final_state_events(file, particle_ids = []):
     """
     :param file: the path to the LHE-file with events
-    :param particle_ids: list of PDG particle ID's of interest (which final 
-    state particles you're interested in). For instance: selektron+ has id 1000011 
+    :param particle_ids: list of PDG particle ID's of interest (which final
+    state particles you're interested in). For instance: selektron+ has id 1000011
 
     :return: A list of dictionaries with the final state particles for all events (key: particle id, value: particle(s) as a list). One dictonary for each event
     """
@@ -140,17 +173,95 @@ def get_final_state_events(file, particle_ids = []):
     events = lhe.readLHE(file)
     for e in events:
         event_particles = { id : [] for id in [p.id for p in e.particles] }
-        
+
         for p in e.particles:
             event_particles[int(p.id)].append(p)
 
         if len(particle_ids):
             event_particles = { id : event_particles[id] for id in event_particles if id in particle_ids }
-         
+
         #Each element of output is stored as a list (to account for potential duplicate particles)
         output.append(event_particles)
 
     return output
+
+
+def get_final_state_particles(event):
+    """
+
+    """
+    fs_particles = { id : [] for id in [p.id for p in event.particles] }
+
+    for p in event.particles:
+        #if particle is final state, add to list
+        if p.status == 1:
+            fs_particles[p.id].append(p)
+    #return list
+    return fs_particles
+
+
+def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0):
+    """
+    :param file_1: path to the first lhe-file
+    :param file_2: path to the second lhe-file
+    :param xsec_1: total xsec for process in file_1
+    :param xsec_2: total xsec for process in file_2
+
+    return: List of events from file_1 and file_2 in proportion to the resp. xsecs
+    """
+    events_1 = lhe.readLHE(file_1)
+    events_1_set = set([e for e in events_1])
+    n1 = len(events_1_set)
+    if not xsec_1:
+        events_1_init = lhe.readLHEInit(file_1)
+        events_1_info = events_1_init['procInfo'][0]
+        xsec_1 = events_1_info["xSection"]
+    print("Dataset 1 initialised (%e events), xsec: %e pb."%(n1,xsec_1))
+
+    events_2 = lhe.readLHE(file_2)
+    events_2_set = set([e for e in events_2])
+    n2 = len(events_2_set)
+    if not xsec_2:
+        events_2_init = lhe.readLHEInit(file_2)
+        events_2_info = events_2_init['procInfo'][0]
+        xsec_2 = events_2_info['xSection']
+    print("Dataset 2 initialised (%e events), xsec: %e pb."%(n2,xsec_2))
+
+    #Sampling probabilities for set 1 and set 2 resp.
+    p1 = xsec_1/(xsec_1 + xsec_2)
+    p2 = xsec_2/(xsec_1 + xsec_2) # 1 - p1
+
+    new_data = []
+    #Main loop (drawing samples while both sets are non empty)
+    n = 0
+    while n1 and n2:
+        #pick a number 0<x<1 randomly
+        x = np.random.uniform(0.,1.)
+
+        #pick an event depending on outcome, remove element after selection
+        if x < p1:
+            e = events_1_set.pop()
+            n1 -= 1
+        else:
+            e = events_2_set.pop()
+            n2 -= 1
+
+        # Get jets from event if there are any
+        jets = get_jets(e, pt_cut)
+        n_jets = len(jets)
+        if n_jets > 0:
+            jets_p = FourMomentum.from_LHEparticles(jets)
+            leading_jet_pt = max([p.transverse_momentum() for p in jets_p])
+
+            #if leading pt is above the cut, skip event (contine next iteration)
+            if leading_jet_pt < pt_cut:
+                continue
+
+        new_data.append(e)
+        n += 1
+
+    #return combined data set, and number of events (tuple)
+    return new_data, n
 
 
 # Plotting tools
@@ -186,7 +297,7 @@ class Plot:
         else:
             raise Exception("Error: appended \
                     series has to be an 1-D np.array and have equal dimensions.")
-    
+
     def add_histogram(self, counts, bins, **kwargs):
         """
         :param counts: 1D np.array of the counts
@@ -203,7 +314,7 @@ class Plot:
         for s in self.series:
             self.ax.plot(s[0], s[1], **s[2])
         self.ax.legend()
-            
+
     def plot_histograms(self):
         for hist in self.histograms:
             count = hist[0]
@@ -229,15 +340,3 @@ class Plot:
             ...
         """
         pass
-
-
-# Deprecated #
-def plot_hist(data_points, bins="auto", xlabel="", ylabel="", title="", logy=False, logx=False):
-    plt.hist(data_points, bins=bins, alpha=0.5)
-    plt.title(title)
-    plt.xlabel(xlabel)
-    if logx: plt.xscale('log')
-    plt.ylabel(ylabel)
-    if logy: plt.yscale('log')
-    plt.grid()
-
