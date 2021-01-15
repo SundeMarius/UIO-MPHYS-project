@@ -9,12 +9,12 @@ import sys
 import os
 import lib.utilities as util
 import lib.statistics_tools as st
-from lib.mssm_particles import visible_particles, neutralinos
+from lib.mssm_particles import visible_particles, invisible_particles
 
 # Prepare plot object to visualise result
 x_label=r"Missing pT [GeV]"
 y_label=r"Density $[\mathrm{GeV}^{⁻1}]$"
-title=r"$pp\rightarrow$ -11 1000022 11 1000022 j electroweak s-channel, $\sqrt{s} = 13$TeV"
+title=r"$pp\rightarrow$ -11 1000022 11 1000022 j electroweak, $\sqrt{s} = 13$TeV"
 labels = ["LO", "NLO"]
 plot = util.Plot(x_label, y_label, title)
 
@@ -56,11 +56,10 @@ for f, filename in enumerate(filenames):
     else:
         # Open 1by1 LHE-file with *pylhe* and get the final state particles for all events.
         print("Reading from %s (%d/%d)" %(filename, f+1, n_files))
-        print(util.sep)
 
         # Open LHE-file and iterate through
-        events, num_events = util.combine_LHE_files(filename[0], filename[1], xsec[0], xsec[1])
-        print("Running through events...")
+        events, num_events = util.combine_LHE_files(filename[0], filename[1], xsec[0], xsec[1], pt_cut=20)
+        print("Running through events (%e)..."%num_events)
 
         progress_print_freq = num_events*0.1
 
@@ -75,7 +74,7 @@ for f, filename in enumerate(filenames):
             event_ids = fs_particles.keys()
             pT_tot = 0
             for id in event_ids:
-                if abs(id) in neutralinos: #abs(id) to account for anti particles
+                if id in invisible_particles:
                     momentum = util.FourMomentum.from_LHEparticles(fs_particles[id])
                     # Do analysis (calculate "missing transverse energy" i.e total missing pT)
                     for particle in momentum:
@@ -91,6 +90,7 @@ for f, filename in enumerate(filenames):
         #Save result to the storage file
         np.savetxt(res_file, data, fmt='%e', header="Missing transverse momentum (MPT)")
         print("Stored calculations in %s"%res_file)
+        print(util.sep)
 
     # Create histogram
     counts, bins = np.histogram(data, bins=450)

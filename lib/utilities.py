@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import lib.mssm_particles as mssm
 
 #Global constants
-sep = '-'*25
-pt_cut = 20. #GeV
+sep = '-'*50
+pTcut = 20. #GeV
 
 
 class FourMomentum:
@@ -111,6 +111,7 @@ class FourMomentum:
         return [FourMomentum(p.e, p.px, p.py, p.pz) for p in lhe_particles]
 
 
+
 # General tools for HEP
 def invariant_mass(particle_momenta):
     """
@@ -134,58 +135,32 @@ def is_onshell(p, m, rtol=1e-2):
     return np.isclose(p.norm(), m, rtol=rtol)
 
 
-def is_jet(particle_id):
-    return abs(particle_id) in mssm.jet_hard
+def is_jet(particle):
+    return (particle.status==1) and (abs(particle.id) in mssm.jet_hard)
 
 
 def has_physical_jets(event, pt_cut=0):
     for p in event.particles:
         pt = FourMomentum.from_LHEparticle(p).transverse_momentum()
         if pt_cut:
-            if is_jet(p.id) and pt <= pt_cut: return True
+            if is_jet(p) and pt <= pt_cut: return True
         else:
-            if is_jet(p.id): return True
+            if is_jet(p): return True
 
     return False
 
 
-def get_jets(event, pt_cut=0): #return list of jets
-    jet = []
+def get_jets(event):
+    jets = []
+    for p in event.particles:
+        if is_jet(p):
+            jets.append(p)
 
-    if has_physical_jets(event, pt_cut):
-        for p in event.particles:
-            jet.append(p)
+    return FourMomentum.from_LHEparticles(jets)
 
-    return jet
 
 
 # LHE file tools
-# deprecated
-def get_final_state_events(file, particle_ids = []):
-    """
-    :param file: the path to the LHE-file with events
-    :param particle_ids: list of PDG particle ID's of interest (which final
-    state particles you're interested in). For instance: selektron+ has id 1000011
-
-    :return: A list of dictionaries with the final state particles for all events (key: particle id, value: particle(s) as a list). One dictonary for each event
-    """
-    output = []
-    events = lhe.readLHE(file)
-    for e in events:
-        event_particles = { id : [] for id in [p.id for p in e.particles] }
-
-        for p in e.particles:
-            event_particles[int(p.id)].append(p)
-
-        if len(particle_ids):
-            event_particles = { id : event_particles[id] for id in event_particles if id in particle_ids }
-
-        #Each element of output is stored as a list (to account for potential duplicate particles)
-        output.append(event_particles)
-
-    return output
-
-
 def get_final_state_particles(event):
     """
 
@@ -200,7 +175,7 @@ def get_final_state_particles(event):
     return fs_particles
 
 
-def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0):
+def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0, pt_cut=20):
     """
     :param file_1: path to the first lhe-file
     :param file_2: path to the second lhe-file
@@ -230,6 +205,7 @@ def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0):
     #Sampling probabilities for set 1 and set 2 resp.
     p1 = xsec_1/(xsec_1 + xsec_2)
     p2 = xsec_2/(xsec_1 + xsec_2) # 1 - p1
+    print("p1, p2: ", p1, p2)
 
     new_data = []
     #Main loop (drawing samples while both sets are non empty)
@@ -246,15 +222,15 @@ def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0):
             e = events_2_set.pop()
             n2 -= 1
 
-        # Get jets from event if there are any
-        jets = get_jets(e, pt_cut)
+        # Get jets from event if there are any, check pt_cut
+        # Event is accepted if n_jet == 0, or n_jet > 0 and leading_pt < pt_cut.
+        jets = get_jets(e)
         n_jets = len(jets)
         if n_jets > 0:
-            jets_p = FourMomentum.from_LHEparticles(jets)
-            leading_jet_pt = max([p.transverse_momentum() for p in jets_p])
+            leading_jet_pt = max([p.transverse_momentum() for p in jets])
 
             #if leading pt is above the cut, skip event (contine next iteration)
-            if leading_jet_pt < pt_cut:
+            if leading_jet_pt > pt_cut:
                 continue
 
         new_data.append(e)
@@ -262,6 +238,7 @@ def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0):
 
     #return combined data set, and number of events (tuple)
     return new_data, n
+
 
 
 # Plotting tools

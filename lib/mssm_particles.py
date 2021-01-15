@@ -15,6 +15,6 @@ gauge_bosons = [21, 22, 23] # gluon, gamma and Z
 neutralinos = [1000022, 1000023, 1000025, 1000035]
 charginos = [1000024, 1000037]
 
-jet_hard = [21] + quarks 
+jet_hard = [21] + quarks
 visible_particles = [22] + charged_leptons + charged_sleptons + charginos
-invisible_particles = neutral_leptons + neutral_sleptons + neutralinos
+invisible_particles = neutralinos + neutral_leptons + neutral_sleptons

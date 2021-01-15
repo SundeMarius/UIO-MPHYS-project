@@ -13,7 +13,7 @@ import lib.statistics_tools as st
 # Prepare plot object to visualise result
 x_label=r"Angle between 1000022 and 1000022 [deg]"
 y_label=r"Density $[\mathrm{deg}^{⁻1}]$"
-title=r"$pp\rightarrow$ -11 1000022 11 1000022 j electroweak s-channel, $\sqrt{s} = 13$TeV"
+title=r"$pp\rightarrow$ -11 1000022 11 1000022 j electroweak, $\sqrt{s} = 13$TeV"
 labels = ["LO", "NLO"]
 plot = util.Plot(x_label, y_label, title)
 
@@ -55,10 +55,10 @@ for f, filename in enumerate(filenames):
     else:
         # Open 1by1 LHE-file with *pylhe* and get the final state particles for all events.
         print("Reading from %s (%d/%d)" %(filename, f+1, n_files))
-        print(sep)
 
         # Open LHE-file and iterate through
-        events, num_events = util.combine_LHE_files(filename[0], filename[1], xsec[0], xsec[1])
+        events, num_events = util.combine_LHE_files(filename[0], filename[1], xsec[0], xsec[1], pt_cut=20)
+        print("Running through events (%e)..."%num_events)
 
         progress_print_freq = num_events*0.1
 
@@ -87,6 +87,7 @@ for f, filename in enumerate(filenames):
         header = "Angle between 1000022 and 1000022"
         np.savetxt(res_file, data, fmt='%e', header=header)
         print("Stored calculations in %s"%res_file)
+        print(util.sep)
 
     # Create histogram
     counts, bins = np.histogram(data, bins=450)

@@ -20,17 +20,31 @@ if len(sys.argv) < 2:
 # Prepare plot object to visualise result
 x_label=r"$pT_{jet} [GeV]$"
 y_label=r"Density $[\mathrm{GeV^{-1}}]$"
-title=r"$q\bar{q}\rightarrow$ -11 1000022 11 1000022 electroweak s-channel, $\sqrt{s} = 13$TeV"
-labels = ["NLO"]
+title=r"$pp\rightarrow$ -11 1000022 11 1000022 j electroweak, $\sqrt{s} = 13$TeV"
+labels = ["LO", "NLO"]
 plot = util.Plot(x_label, y_label, title)
 
-# Get lhe file and PDG particle ID's from user made csv run_file, store each line in a list
-run_file = sys.argv[1]
+# Enter paths to LHE files
+path_LO_1 = "/home/mariusss/University/master_project/data/pp_epemn1n1_LO.lhe"
+path_LO_2 = "/home/mariusss/University/master_project/data/pp_epemn1n1j_LO.lhe"
+path_NLO_1 = "/home/mariusss/University/master_project/data/pp_epemn1n1_NLO.lhe"
+path_NLO_2 = "/home/mariusss/University/master_project/data/pp_epemn1n1j_NLO.lhe"
+xsec_LO_1 = 1.591440e-02 #pb
+xsec_LO_2 = 9.746654e-03 #pb
+xsec_NLO_1 = 2.140095e-02 #pb
+xsec_NLO_2 = 1.833450e-02 #pb
 
-filename = str(np.loadtxt(run_file, dtype=str))
+filenames = [[path_LO_1, path_LO_2], [path_NLO_1, path_NLO_2]]
+xsecs = [[xsec_LO_1, xsec_LO_2], [xsec_NLO_1, xsec_NLO_2]]
 
-file_basename, ext = os.path.splitext(filename)
-result_filename = file_basename + "_jet_pT" + ".storage"
+n_files = len(filenames)
+
+# To avoid redoing expensive calculations, prepare storage files
+result_filenames = []
+for f, filename in enumerate(filenames):
+    file_basename, ext = os.path.splitext(filename[0])
+    result_filename = file_basename + "_leading_jet_pt_combinedset" + ".storage"
+    result_filenames.append(result_filename)
 
 # Create list to store histograms
 histograms = []
@@ -44,12 +58,12 @@ else:
     print("Reading from %s" %filename)
 
     # Open LHE-file and iterate through
-    events = lhe.readLHE(filename)
-    num_events = lhe.readNumEvents(filename)
+    events, num_events = util.combine_LHE_files(filename[0], filename[1], xsec[0], xsec[1])
+    print("Running through events (%e)..."%num_events)
 
-    print_progress_freq = int(num_events*0.1)
+    progress_print_freq = num_events*0.1
 
-    data = []
+    data = np.zeros(num_events)
 
     cnt = 0
     for e in events:
