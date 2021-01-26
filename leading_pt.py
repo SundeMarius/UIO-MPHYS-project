@@ -36,7 +36,7 @@ n_files = len(filenames)
 # To avoid redoing expensive calculations, prepare storage files
 result_filenames = []
 for f, filename in enumerate(filenames):
-    file_basename, ext = os.path.splitext(filename[0])
+    file_basename, ext = os.path.splitext(filename[1])
     result_filename = file_basename + "_leading_jet_PT" + ".storage"
     result_filenames.append(result_filename)
 
@@ -51,6 +51,7 @@ for f, filename in enumerate(filenames):
 
     # Check if storage file exists, use that file if so
     if os.path.isfile(res_file):
+        continue
         print("Reading from %s (%d/%d)" %(res_file, f+1, n_files))
         data = np.loadtxt(res_file)
     else:
@@ -58,7 +59,8 @@ for f, filename in enumerate(filenames):
         print("Reading from %s (%d/%d)" %(filename, f+1, n_files))
 
         # Open LHE-file and iterate through
-        events, num_events = util.combine_LHE_files(filename[0], filename[1], xsec[0], xsec[1], pt_cut=20)
+        #events, num_events = util.combine_LHE_files(filename[0], filename[1], xsec[0], xsec[1], pt_cut=20)
+        events, num_events = util.read_LHEfile(filename[1], pt_cut=20)
         print("Running through events (%e)..."%num_events)
 
         progress_print_freq = num_events*0.1
@@ -88,15 +90,18 @@ for f, filename in enumerate(filenames):
 
     # Create histogram
     counts, bins = np.histogram(data, bins=450)
-    if f == 0:
-        first_bins = bins
+    #if f == 0:
+    first_bins = bins
 
     # Normalise histogram, then store it (using the binning from first iteration to ensure identical binning)
     counts = counts/np.sum(counts*np.diff(first_bins))
     histograms.append([counts, first_bins])
 
     #Add histogram to plot
-    plot.add_histogram(counts, first_bins, label=labels[f], alpha=.5)
+    plot.add_histogram(counts, first_bins, label=labels[f], alpha=1.)
+    plot.plot_all()
+    plt.show()
+    exit(1)
 
 # Calculate KL-divergence between LO and NLO distributions
 LO_hist = histograms[0]  # tuple (count, bin_edges), Q-distribution representing the model

@@ -168,11 +168,35 @@ def get_final_state_particles(event):
     fs_particles = { id : [] for id in [p.id for p in event.particles] }
 
     for p in event.particles:
-        #if particle is final state, add to list
+        # if particle is final state, add to list
         if p.status == 1:
             fs_particles[p.id].append(p)
-    #return list
+    
+    # return dictionary
     return fs_particles
+
+
+def read_LHEfile(file, pt_cut=20):
+    events = lhe.readLHE(file)
+
+    new_events = []
+    n = 0
+    for e in events:
+        # Get jets from event if there are any, check pt_cut
+        # Event is accepted if n_jet == 0, or n_jet > 0 and leading_pt < pt_cut.
+        jets = get_jets(e)
+        n_jets = len(jets)
+        if n_jets > 0:
+            leading_jet_pt = max([p.transverse_momentum() for p in jets])
+
+            # if leading pt is above the cut, skip event (contine next iteration)
+            if leading_jet_pt > pt_cut:
+                continue
+
+        new_events.append(e)
+        n += 1
+
+    return new_events, n
 
 
 def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0, pt_cut=20):
@@ -182,7 +206,7 @@ def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0, pt_cut=20):
     :param xsec_1: total xsec for process in file_1
     :param xsec_2: total xsec for process in file_2
 
-    return: List of events from file_1 and file_2 in proportion to the resp. xsecs
+    return: List of events from file_1 and file_2 in proportion to their cross sections, resp.
     """
     events_1 = lhe.readLHE(file_1)
     events_1_set = set([e for e in events_1])
@@ -191,7 +215,7 @@ def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0, pt_cut=20):
         events_1_init = lhe.readLHEInit(file_1)
         events_1_info = events_1_init['procInfo'][0]
         xsec_1 = events_1_info["xSection"]
-    print("Dataset 1 initialised (%e events), xsec: %e pb."%(n1,xsec_1))
+    print("Dataset 1 initialised (%e events), xsec: %e pb."%(n1, xsec_1))
 
     events_2 = lhe.readLHE(file_2)
     events_2_set = set([e for e in events_2])
@@ -200,21 +224,22 @@ def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0, pt_cut=20):
         events_2_init = lhe.readLHEInit(file_2)
         events_2_info = events_2_init['procInfo'][0]
         xsec_2 = events_2_info['xSection']
-    print("Dataset 2 initialised (%e events), xsec: %e pb."%(n2,xsec_2))
+    print("Dataset 2 initialised (%e events), xsec: %e pb."%(n2, xsec_2))
 
-    #Sampling probabilities for set 1 and set 2 resp.
+    # Sampling probabilities for set 1 and set 2 resp.
     p1 = xsec_1/(xsec_1 + xsec_2)
     p2 = xsec_2/(xsec_1 + xsec_2) # 1 - p1
-    print("p1, p2: ", p1, p2)
+    print("p1 = %f\np2 = %f"%(p1, p2))
+    print("pt_cut = %f GeV"%pt_cut)
 
-    new_data = []
-    #Main loop (drawing samples while both sets are non empty)
+    new_events = []
+    # Main loop (drawing samples while both sets are non empty)
     n = 0
     while n1 and n2:
-        #pick a number 0<x<1 randomly
+        # pick a number 0<x<1 randomly
         x = np.random.uniform(0.,1.)
 
-        #pick an event depending on outcome, remove element after selection
+        # pick an event depending on outcome, remove element after selection
         if x < p1:
             e = events_1_set.pop()
             n1 -= 1
@@ -229,15 +254,15 @@ def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0, pt_cut=20):
         if n_jets > 0:
             leading_jet_pt = max([p.transverse_momentum() for p in jets])
 
-            #if leading pt is above the cut, skip event (contine next iteration)
+            # if leading pt is above the cut, skip event (contine next iteration)
             if leading_jet_pt > pt_cut:
                 continue
 
-        new_data.append(e)
+        new_events.append(e)
         n += 1
 
-    #return combined data set, and number of events (tuple)
-    return new_data, n
+    # return combined data set, and number of events (tuple)
+    return new_events, n
 
 
 
@@ -258,6 +283,8 @@ class Plot:
         self.ax.set_title(title)
         self.ax.set_xlabel(xlabel)
         self.ax.set_ylabel(ylabel)
+        self.ax.set_xlim(0,600)
+        #self.ax.set_ylim(0,4000)
 
         if self.logy_enabled: self.ax.set_yscale('log')
         if self.logx_enabled: self.ax.set_xscale('log')
