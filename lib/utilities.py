@@ -1,12 +1,11 @@
 import numpy as np
-import scipy as sp
 import pylhe as lhe
 import matplotlib.pyplot as plt
 import lib.mssm_particles as mssm
 
-#Global constants
+# Global constants
 sep = '-'*50
-pTcut = 20. #GeV
+pTcut = 20.  # GeV
 
 
 class FourMomentum:
@@ -26,7 +25,8 @@ class FourMomentum:
 
     def __mul__(self, p):
         """
-        Define multiplication between two FourMomentum objects p1 and p2 (contraction p1_mu * p2^mu)
+        Define multiplication between two FourMomentum objects p1 and p2
+        (contraction p1_mu * p2^mu)
         """
         p1 = self.three_momentum()
         p2 = p.three_momentum()
@@ -64,13 +64,15 @@ class FourMomentum:
 
     def three_momentum(self):
         """
-        :return: Spatial part of the four momentum (3-momentum) as np.array [px, py, pz]
+        :return: Spatial part of the four momentum (3-momentum)
+        as np.array [px, py, pz]
         """
         return np.array([self.px, self.py, self.pz])
 
     def transverse_momentum(self, vector_out=False):
         """
-        Get transverse momentum pT (transverse plane orthogonal to z-axis is conventional)
+        Get transverse momentum pT
+        (transverse plane orthogonal to z-axis is conventional)
 
         Can return components or the magnitude.
         """
@@ -85,17 +87,18 @@ class FourMomentum:
         """
         A method to print the FourMomentum in a nice way (with units of choice)
         """
-        for mu in ['e','px','py','pz']:
+        for mu in ['e', 'px', 'py', 'pz']:
             attribute = getattr(self, mu)
             if mu == 'e':
-                print(" %s: %e %s" %(mu, attribute, unit_e))
+                print(" %s: %e %s" % (mu, attribute, unit_e))
             else:
-                print("%s: %e %s" %(mu, attribute, unit_p))
+                print("%s: %e %s" % (mu, attribute, unit_p))
 
     @staticmethod
     def from_LHEparticle(lhe_particle):
         """
-        Construct a FourMomentum object from a pyhle-particle object (see py-module "Pylhe" by H. Lukas.)
+        Construct a FourMomentum object from a pyhle-particle object
+        (see py-module "Pylhe" by H. Lukas.)
         """
         e = lhe_particle.e
         px = lhe_particle.px
@@ -106,10 +109,10 @@ class FourMomentum:
     @staticmethod
     def from_LHEparticles(lhe_particles):
         """
-        Construct a list of FourMomentum objects from a list of lhe-particles (see py-module "Pylhe" by H. Lukas.)
+        Construct a list of FourMomentum objects from a list of lhe-particles
+        (see py-module "Pylhe" by H. Lukas.)
         """
         return [FourMomentum(p.e, p.px, p.py, p.pz) for p in lhe_particles]
-
 
 
 # General tools for HEP
@@ -117,9 +120,10 @@ def invariant_mass(particle_momenta):
     """
     :param particle_momenta: list of FourMomentum objects
 
-    :return: invariant mass of particle 1, particle 2, particle 3, ... [ M = sqrt((e1+e2+...)**2 - (p1+p2+...)**2) ]
+    :return: invariant mass of particle 1, particle 2, particle 3, ...
+    [ M = sqrt((e1+e2+...)**2 - (p1+p2+...)**2) ]
     """
-    total_momentum = FourMomentum() # Null vector
+    total_momentum = FourMomentum()  # Null vector
     for p in particle_momenta:
         total_momentum = total_momentum + p
     return total_momentum.norm()
@@ -136,18 +140,7 @@ def is_onshell(p, m, rtol=1e-2):
 
 
 def is_jet(particle):
-    return (particle.status==1) and (abs(particle.id) in mssm.jet_hard)
-
-
-def has_physical_jets(event, pt_cut=0):
-    for p in event.particles:
-        pt = FourMomentum.from_LHEparticle(p).transverse_momentum()
-        if pt_cut:
-            if is_jet(p) and pt <= pt_cut: return True
-        else:
-            if is_jet(p): return True
-
-    return False
+    return (particle.status == 1) and (abs(particle.id) in mssm.jet_hard)
 
 
 def get_jets(event):
@@ -159,19 +152,31 @@ def get_jets(event):
     return FourMomentum.from_LHEparticles(jets)
 
 
+def has_physical_jets(event, pt_cut=20):
+    # Get jets from event if there are any, check pt_cut
+    # Event is accepted if n_jet == 0, or n_jet > 0 and leading_pt < pt_cut.
+    jets = get_jets(event)
+    n_jets = len(jets)
+    if n_jets > 0:
+        leading_jet_pt = max([p.transverse_momentum() for p in jets])
+
+        # if leading pt is above the cut, reject event (return False)
+        if leading_jet_pt > pt_cut:
+            return False
+
+    return True
+
 
 # LHE file tools
 def get_final_state_particles(event):
-    """
 
-    """
-    fs_particles = { id : [] for id in [p.id for p in event.particles] }
+    fs_particles = {id: [] for id in [p.id for p in event.particles]}
 
     for p in event.particles:
         # if particle is final state, add to list
         if p.status == 1:
             fs_particles[p.id].append(p)
-    
+
     # return dictionary
     return fs_particles
 
@@ -182,19 +187,9 @@ def read_LHEfile(file, pt_cut=20):
     new_events = []
     n = 0
     for e in events:
-        # Get jets from event if there are any, check pt_cut
-        # Event is accepted if n_jet == 0, or n_jet > 0 and leading_pt < pt_cut.
-        jets = get_jets(e)
-        n_jets = len(jets)
-        if n_jets > 0:
-            leading_jet_pt = max([p.transverse_momentum() for p in jets])
-
-            # if leading pt is above the cut, skip event (contine next iteration)
-            if leading_jet_pt > pt_cut:
-                continue
-
-        new_events.append(e)
-        n += 1
+        if has_physical_jets(e, pt_cut):
+            new_events.append(e)
+            n += 1
 
     return new_events, n
 
@@ -206,7 +201,8 @@ def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0, pt_cut=20):
     :param xsec_1: total xsec for process in file_1
     :param xsec_2: total xsec for process in file_2
 
-    return: List of events from file_1 and file_2 in proportion to their cross sections, resp.
+    return: List of events from file_1 and file_2 in proportion to their
+    cross sections, resp.
     """
     events_1 = lhe.readLHE(file_1)
     events_1_set = set([e for e in events_1])
@@ -215,7 +211,7 @@ def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0, pt_cut=20):
         events_1_init = lhe.readLHEInit(file_1)
         events_1_info = events_1_init['procInfo'][0]
         xsec_1 = events_1_info["xSection"]
-    print("Dataset 1 initialised (%e events), xsec: %e pb."%(n1, xsec_1))
+    print("Dataset 1 initialised (%e events), xsec: %e pb." % (n1, xsec_1))
 
     events_2 = lhe.readLHE(file_2)
     events_2_set = set([e for e in events_2])
@@ -224,20 +220,20 @@ def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0, pt_cut=20):
         events_2_init = lhe.readLHEInit(file_2)
         events_2_info = events_2_init['procInfo'][0]
         xsec_2 = events_2_info['xSection']
-    print("Dataset 2 initialised (%e events), xsec: %e pb."%(n2, xsec_2))
+    print("Dataset 2 initialised (%e events), xsec: %e pb." % (n2, xsec_2))
 
     # Sampling probabilities for set 1 and set 2 resp.
     p1 = xsec_1/(xsec_1 + xsec_2)
-    p2 = xsec_2/(xsec_1 + xsec_2) # 1 - p1
-    print("p1 = %f\np2 = %f"%(p1, p2))
-    print("pt_cut = %f GeV"%pt_cut)
+    p2 = xsec_2/(xsec_1 + xsec_2)  # 1 - p1
+    print("p1 = %f\np2 = %f" % (p1, p2))
+    print("pt_cut = %f GeV" % pt_cut)
 
-    new_events = []
+    events = []
     # Main loop (drawing samples while both sets are non empty)
     n = 0
     while n1 and n2:
         # pick a number 0<x<1 randomly
-        x = np.random.uniform(0.,1.)
+        x = np.random.uniform(0., 1.)
 
         # pick an event depending on outcome, remove element after selection
         if x < p1:
@@ -247,23 +243,17 @@ def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0, pt_cut=20):
             e = events_2_set.pop()
             n2 -= 1
 
-        # Get jets from event if there are any, check pt_cut
-        # Event is accepted if n_jet == 0, or n_jet > 0 and leading_pt < pt_cut.
-        jets = get_jets(e)
-        n_jets = len(jets)
-        if n_jets > 0:
-            leading_jet_pt = max([p.transverse_momentum() for p in jets])
+        events.append(e)
 
-            # if leading pt is above the cut, skip event (contine next iteration)
-            if leading_jet_pt > pt_cut:
-                continue
-
-        new_events.append(e)
-        n += 1
+    # Apply cuts
+    new_events = []
+    for e in events:
+        if has_physical_jets(e, pt_cut):
+            new_events.append(e)
+            n += 1
 
     # return combined data set, and number of events (tuple)
     return new_events, n
-
 
 
 # Plotting tools
@@ -279,15 +269,17 @@ class Plot:
         self.fig = plt.figure(1)
         self.ax = self.fig.add_subplot(1, 1, 1)
 
-        #Set title, axis labels, axis scales etc.
+        # Set title, axis labels, axis scales etc.
         self.ax.set_title(title)
         self.ax.set_xlabel(xlabel)
         self.ax.set_ylabel(ylabel)
-        self.ax.set_xlim(0,600)
-        #self.ax.set_ylim(0,4000)
+        self.ax.set_xlim(0, 600)
+        # self.ax.set_ylim(0,4000)
 
-        if self.logy_enabled: self.ax.set_yscale('log')
-        if self.logx_enabled: self.ax.set_xscale('log')
+        if self.logy_enabled:
+            self.ax.set_yscale('log')
+        if self.logx_enabled:
+            self.ax.set_xscale('log')
 
         self.ax.grid()
 
@@ -323,7 +315,8 @@ class Plot:
         for hist in self.histograms:
             count = hist[0]
             bins = hist[1]
-            self.ax.bar(bins[:-1] + np.diff(bins) / 2, count, np.diff(bins), **hist[2])
+            self.ax.bar(bins[:-1] + np.diff(bins) / 2,
+                        count, np.diff(bins), **hist[2])
         self.ax.legend()
 
     def plot_all(self):
