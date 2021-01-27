@@ -12,39 +12,48 @@ y_label = r"Density $[\mathrm{GeV}^{⁻1}]$"
 title = r"$pp\rightarrow$ -11 1000022 11 1000022 j electroweak, $\sqrt{s} = 13$TeV"
 plot = util.Plot(x_label, y_label, title)
 
-labels_pt10 = [r"LO, min jet $p_T=10$GeV", r"NLO, min jet $p_T=10$GeV"]
-labels_pt1 = [r"LO, min jet $p_T=1$GeV", r"NLO, min jet $p_T=1$GeV"]
+labels_pt10 = [r"LO, min jet $p_T=10$GeV",
+               r"NLO, min jet $p_T=10$GeV"]
+labels_pt1 = [r"LO, min jet $p_T=1$GeV",
+              r"NLO, min jet $p_T=1$GeV"]
 
 labels = [labels_pt10, labels_pt1]
 
 # Enter paths to LHE files
-path_LO_1 = "/home/mariusss/University/master_project/data/pp_epemn1n1_LO.lhe"
+path_LO = "/home/mariusss/University/master_project/data/pp_epemn1n1_LO.lhe"
 
-path_LO_2_pt10 = "/home/mariusss/University/master_project/data/pp_epemn1n1j_LO_10.lhe"
-path_NLO_1_pt10 = "/home/mariusss/University/master_project/data/pp_epemn1n1_NLO_10.lhe"
-path_NLO_2_pt10 = "/home/mariusss/University/master_project/data/pp_epemn1n1j_NLO_10.lhe"
+path_LO_j_pt10 = "/home/mariusss/University/master_project/data/pp_epemn1n1j_LO_10.lhe"
 
-path_LO_2_pt1 = "/home/mariusss/University/master_project/data/pp_epemn1n1j_LO_1.lhe"
-path_NLO_1_pt1 = "/home/mariusss/University/master_project/data/pp_epemn1n1_NLO_1.lhe"
-path_NLO_2_pt1 = "/home/mariusss/University/master_project/data/pp_epemn1n1j_NLO_1.lhe"
+path_NLO_pt10 = "/home/mariusss/University/master_project/data/pp_epemn1n1_NLO_10.lhe"
+path_NLO_j_pt10 = "/home/mariusss/University/master_project/data/pp_epemn1n1j_NLO_10.lhe"
+
+path_LO_j_pt1 = "/home/mariusss/University/master_project/data/pp_epemn1n1j_LO_1.lhe"
+
+path_NLO_pt1 = "/home/mariusss/University/master_project/data/pp_epemn1n1_NLO_1.lhe"
+path_NLO_j_pt1 = "/home/mariusss/University/master_project/data/pp_epemn1n1j_NLO_1.lhe"
 
 # Cross sections for each of the LHE files
-xsec_LO_1 = 1.591e-02  # pb
+xsec_LO = 1.591e-02  # pb
 
-xsec_LO_2_pt10 = 1.507e-02  # pb
-xsec_NLO_1_pt10 = 2.137e-02  # pb
-xsec_NLO_2_pt10 = 1.840e-02  # pb
+xsec_LO_j_pt10 = 1.507e-02  # pb
 
-xsec_LO_2_pt1 = 3.959e-02  # pb
-xsec_NLO_1_pt1 = 2.138e-02  # pb
-xsec_NLO_2_pt1 = 1.844e-02  # pb
+xsec_NLO_pt10 = 2.137e-02  # pb
+xsec_NLO_j_pt10 = 1.840e-02  # pb
 
-filenames_pt10 = [[path_LO_1, path_LO_2_pt10],
-                  [path_NLO_1_pt10, path_NLO_2_pt10]]
-filenames_pt1 = [[path_LO_1, path_LO_2_pt1], [path_NLO_1_pt1, path_NLO_2_pt1]]
+xsec_LO_j_pt1 = 3.959e-02  # pb
 
-xsecs_pt10 = [[xsec_LO_1, xsec_LO_2_pt10], [xsec_NLO_1_pt10, xsec_NLO_2_pt10]]
-xsecs_pt1 = [[xsec_LO_1, xsec_LO_2_pt1], [xsec_NLO_1_pt1, xsec_NLO_2_pt1]]
+xsec_NLO_pt1 = 2.138e-02  # pb
+xsec_NLO_j_pt1 = 1.844e-02  # pb
+
+filenames_pt10 = [[path_LO, path_LO_j_pt10],
+                  [path_NLO_pt10, path_NLO_j_pt10]]
+filenames_pt1 = [[path_LO, path_LO_j_pt1],
+                 [path_NLO_pt1, path_NLO_j_pt1]]
+
+xsecs_pt10 = [[xsec_LO, xsec_LO_j_pt10],
+              [xsec_NLO_pt10, xsec_NLO_j_pt10]]
+xsecs_pt1 = [[xsec_LO, xsec_LO_j_pt1],
+             [xsec_NLO_pt1, xsec_NLO_j_pt1]]
 
 filenames = [filenames_pt10, filenames_pt1]
 xsecs = [xsecs_pt10, xsecs_pt1]
@@ -78,13 +87,11 @@ for p, pt in enumerate(filenames):
             data = np.loadtxt(res_file)
         else:
             # Open 1by1 LHE-file with *pylhe* and get the final state particles
-            # for all events.
             print("Reading from %s (%d/%d)" % (filename, f+1, n_files))
 
             # Open LHE-file and iterate through
-            events, num_events = util.combine_LHE_files(
-                filename[0], filename[1], xsec[f][0], xsec[f][1], pt_cut=20)
-            print("Running through events (%e)..." % num_events)
+            events, num_events = util.combine_LHE_files(filename[0], filename[1], xsec[f][0], xsec[f][1], pt_cut=20.)
+            print("Running through %d events..." % num_events)
 
             progress_print_freq = num_events//10
 
@@ -95,20 +102,16 @@ for p, pt in enumerate(filenames):
             for e in events:
                 # Create dictionary of final state particles for easy access
                 fs_particles = util.get_final_state_particles(e)
-
-                # Extract momenta of visible particles (as FourMomentum objects)
                 event_ids = fs_particles.keys()
                 pT_tot = 0
                 for id in event_ids:
                     if id in invisible_particles:
-                        momentum = util.FourMomentum.from_LHEparticles(
-                            fs_particles[id])
-                        # Do analysis
-                        # (calculate missing transverse energy)
-                        for particle in momentum:
-                            pT_tot += particle.transverse_momentum(
-                                vector_out=True)
+                        invisible_momentum = util.FourMomentum.from_LHEparticles(fs_particles[id])
 
+                        for particle in invisible_momentum:
+                            pT_tot += particle.transverse_momentum(vector_out=True)
+
+                # Calculate missing transverse energy
                 missing_pt = np.linalg.norm(pT_tot)
                 data[cnt] = missing_pt
 
@@ -118,8 +121,7 @@ for p, pt in enumerate(filenames):
                     print("%d%s of events processed." % (10*prog, "%"))
 
             # Save result to the storage file
-            np.savetxt(res_file, data, fmt='%e',
-                       header="Missing transverse momentum (scalar) (MET)")
+            np.savetxt(res_file, data, fmt='%e',header="Missing transverse momentum (scalar) (MET)")
             print("Stored calculations in %s" % res_file)
             print(util.sep)
 

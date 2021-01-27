@@ -153,18 +153,16 @@ def get_jets(event):
 
 
 def has_physical_jets(event, pt_cut=20):
-    # Get jets from event if there are any, check pt_cut
-    # Event is accepted if n_jet == 0, or n_jet > 0 and leading_pt < pt_cut.
     jets = get_jets(event)
     n_jets = len(jets)
     if n_jets > 0:
         leading_jet_pt = max([p.transverse_momentum() for p in jets])
 
-        # if leading pt is above the cut, reject event (return False)
+        # if leading pt is above the cut, return True (jet is physical)
         if leading_jet_pt > pt_cut:
-            return False
+            return True
 
-    return True
+    return False
 
 
 # LHE file tools
@@ -181,17 +179,15 @@ def get_final_state_particles(event):
     return fs_particles
 
 
-def read_LHEfile(file, pt_cut=20):
+def read_LHE_file(file, pt_cut=20):
     events = lhe.readLHE(file)
 
     new_events = []
-    n = 0
     for e in events:
-        if has_physical_jets(e, pt_cut):
+        if not has_physical_jets(e, pt_cut):
             new_events.append(e)
-            n += 1
 
-    return new_events, n
+    return new_events, len(new_events)
 
 
 def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0, pt_cut=20):
@@ -230,7 +226,6 @@ def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0, pt_cut=20):
 
     events = []
     # Main loop (drawing samples while both sets are non empty)
-    n = 0
     while n1 and n2:
         # pick a number 0<x<1 randomly
         x = np.random.uniform(0., 1.)
@@ -248,12 +243,11 @@ def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0, pt_cut=20):
     # Apply cuts
     new_events = []
     for e in events:
-        if has_physical_jets(e, pt_cut):
+        if not has_physical_jets(e, pt_cut):
             new_events.append(e)
-            n += 1
 
-    # return combined data set, and number of events (tuple)
-    return new_events, n
+    # return combined cut dataset, and number of events (tuple)
+    return new_events, len(new_events)
 
 
 # Plotting tools
