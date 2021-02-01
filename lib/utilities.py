@@ -139,9 +139,27 @@ def is_onshell(p, m, rtol=1e-2):
     return np.isclose(p.norm(), m, rtol=rtol)
 
 
+# Jet Tools
 def is_jet(particle):
+    """
+    :param particle: LHEparticle object
+    :return: True if particle is a parton jet candidate, False otherwise
+    """
     return (particle.status == 1) and (abs(particle.id) in mssm.jet_hard)
 
+
+def has_physical_jets(event, pt_cut):
+    jets = get_jets(event)
+
+    if len(jets) > 0:
+        leading_jet_pt = max([p.transverse_momentum() for p in jets])
+
+        # if leading pt is above the cut, return True (jet is physical)
+        if leading_jet_pt > pt_cut:
+            return True
+
+    return False
+    
 
 def get_jets(event):
     jets = []
@@ -152,45 +170,28 @@ def get_jets(event):
     return FourMomentum.from_LHEparticles(jets)
 
 
-def has_physical_jets(event, pt_cut=20):
-    jets = get_jets(event)
-    n_jets = len(jets)
-    if n_jets > 0:
-        leading_jet_pt = max([p.transverse_momentum() for p in jets])
-
-        # if leading pt is above the cut, return True (jet is physical)
-        if leading_jet_pt > pt_cut:
-            return True
-
-    return False
-
-
-# LHE file tools
 def get_final_state_particles(event):
-
-    fs_particles = {id: [] for id in [p.id for p in event.particles]}
+    fs_particles = []
 
     for p in event.particles:
         # if particle is final state, add to list
         if p.status == 1:
-            fs_particles[p.id].append(p)
+            fs_particles.append(p)
 
-    # return dictionary
     return fs_particles
 
 
-def read_LHE_file(file, pt_cut=20):
-    events = lhe.readLHE(file)
-
-    new_events = []
-    for e in events:
-        if not has_physical_jets(e, pt_cut):
-            new_events.append(e)
-
-    return new_events, len(new_events)
+# Cuts and filters
+def check_jet_pt(event, pt_cut):
+    return not has_physical_jets(event, pt_cut)
 
 
-def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0, pt_cut=20):
+def check_lepton_pt(event, pt_cut):
+    pass
+    
+
+# LHE file tools
+def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0, pt_cut=20.):
     """
     :param file_1: path to the first lhe-file
     :param file_2: path to the second lhe-file
@@ -200,29 +201,24 @@ def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0, pt_cut=20):
     return: List of events from file_1 and file_2 in proportion to their
     cross sections, resp.
     """
-    events_1 = lhe.readLHE(file_1)
-    events_1_set = set([e for e in events_1])
-    n1 = len(events_1_set)
+    events_1 = [e for e in lhe.readLHE(file_1)]
+    n1 = len(events_1)
     if not xsec_1:
         events_1_init = lhe.readLHEInit(file_1)
         events_1_info = events_1_init['procInfo'][0]
         xsec_1 = events_1_info["xSection"]
-    print("Dataset 1 initialised (%e events), xsec: %e pb." % (n1, xsec_1))
+    print("Dataset 1 initialised (%e events), cross section: %e pb."%(n1, xsec_1))
 
-    events_2 = lhe.readLHE(file_2)
-    events_2_set = set([e for e in events_2])
-    n2 = len(events_2_set)
+    events_2 = [e for e in lhe.readLHE(file_2)]
+    n2 = len(events_2)
     if not xsec_2:
         events_2_init = lhe.readLHEInit(file_2)
         events_2_info = events_2_init['procInfo'][0]
         xsec_2 = events_2_info['xSection']
-    print("Dataset 2 initialised (%e events), xsec: %e pb." % (n2, xsec_2))
+    print("Dataset 2 initialised (%e events), cross section: %e pb."%(n2, xsec_2))
 
-    # Sampling probabilities for set 1 and set 2 resp.
+    # Sampling probability for set 1
     p1 = xsec_1/(xsec_1 + xsec_2)
-    p2 = xsec_2/(xsec_1 + xsec_2)  # 1 - p1
-    print("p1 = %f\np2 = %f" % (p1, p2))
-    print("pt_cut = %f GeV" % pt_cut)
 
     events = []
     # Main loop (drawing samples while both sets are non empty)
@@ -232,22 +228,16 @@ def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0, pt_cut=20):
 
         # pick an event depending on outcome, remove element after selection
         if x < p1:
-            e = events_1_set.pop()
+            e = events_1.pop()
             n1 -= 1
         else:
-            e = events_2_set.pop()
+            e = events_2.pop()
             n2 -= 1
 
         events.append(e)
 
-    # Apply cuts
-    new_events = []
-    for e in events:
-        if not has_physical_jets(e, pt_cut):
-            new_events.append(e)
-
-    # return combined cut dataset, and number of events (tuple)
-    return new_events, len(new_events)
+    # return combined dataset, and number of events (tuple)
+    return events, len(events)
 
 
 # Plotting tools
@@ -267,8 +257,6 @@ class Plot:
         self.ax.set_title(title)
         self.ax.set_xlabel(xlabel)
         self.ax.set_ylabel(ylabel)
-        self.ax.set_xlim(0, 600)
-        # self.ax.set_ylim(0,4000)
 
         if self.logy_enabled:
             self.ax.set_yscale('log')
@@ -276,6 +264,7 @@ class Plot:
             self.ax.set_xscale('log')
 
         self.ax.grid()
+
 
     def add_series(self, x, y, **kwargs):
         """
@@ -286,42 +275,66 @@ class Plot:
             self.series.append((x, y, kwargs))
         else:
             raise Exception("Error: appended \
-                    series has to be an 1-D np.array and have equal dimensions.")
+            series has to be an 1-D np.array and have equal dimensions.")
+
 
     def add_histogram(self, counts, bins, **kwargs):
         """
         :param counts: 1D np.array of the counts
-        :param bins: 1D np.array of the bin edges, or string to specify how
-        to calculate bin edges (see numpy doc on np.histogram)
+        :param bins: see docs for np.historgram
         """
         if counts.ndim == 1:
             self.histograms.append((counts, bins, kwargs))
         else:
             raise Exception("Error: appended \
-                    histogram data has to be an 1-D np.array.")
+            histogram data has to be an 1-D np.array.")
 
-    def plot_series(self):
+
+    def add_label(self, label, **kwargs):
+        self.ax.plot([], [], label=label, lw=0, **kwargs)
+
+
+    def plot_series(self, show=True):
         for s in self.series:
             self.ax.plot(s[0], s[1], **s[2])
         self.ax.legend()
+        if show:
+            plt.show()
 
-    def plot_histograms(self):
+
+    def plot_histograms(self, show=True):
+        # See matplotlib.histogram documentation -- plot stacked histograms
+        # counts = [hist[0] for hist in self.histograms] 
+        # bins = [hist[1][:-1] for hist in self.histograms] 
+        # labels = [hist[2]["label"] for hist in self.histograms]
+        # self.ax.hist(bins, bins[0], label=labels, weights=counts, stacked=True, log=True)
         for hist in self.histograms:
             count = hist[0]
             bins = hist[1]
             self.ax.bar(bins[:-1] + np.diff(bins) / 2,
                         count, np.diff(bins), **hist[2])
         self.ax.legend()
+        if show:
+            plt.show()
+
 
     def plot_all(self):
-        self.plot_series()
-        self.plot_histograms()
-
-    def display(self):
+        self.plot_series(show=False)
+        self.plot_histograms(show=False)
         plt.show()
+
+
+    def set_xlim(self, x_min, x_max):
+        self.ax.set_xlim(x_min, x_max)
+
+
+    def set_ylim(self, y_min, y_max):
+        self.ax.set_ylim(y_min, y_max)   
+
 
     def savefig(self, filename):
         self.ax.savefig(filename)
+
 
     @staticmethod
     def from_config_file(filename):

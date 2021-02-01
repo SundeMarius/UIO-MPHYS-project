@@ -1,4 +1,7 @@
 #!/usr/bin/python3
+import sys
+sys.path.insert(0, "..")
+
 import numpy as np
 import matplotlib.pyplot as plt
 import os
@@ -74,6 +77,7 @@ for p, pt in enumerate(filenames):
 
 # Create list to store histograms
 histograms = []
+binning = np.linspace(0., 1.e3, 201)
 
 for p, pt in enumerate(filenames):
     xsec = xsecs[p]
@@ -86,64 +90,60 @@ for p, pt in enumerate(filenames):
             print("Reading from %s (%d/%d)" % (res_file, f+1, n_files))
             data = np.loadtxt(res_file)
         else:
-            # Open 1by1 LHE-file with *pylhe* and get the final state particles
             print("Reading from %s (%d/%d)" % (filename, f+1, n_files))
 
             # Open LHE-file and iterate through
-            events, num_events = util.combine_LHE_files(filename[0], filename[1], xsec[f][0], xsec[f][1], pt_cut=20.)
+            events, num_events = util.combine_LHE_files(
+                filename[0], filename[1], xsec[f][0], xsec[f][1], pt_cut=20.)
             print("Running through %d events..." % num_events)
-
-            progress_print_freq = num_events//10
 
             data = np.zeros(num_events)
 
             cnt = 0
             prog = 0
+            print_freq = num_events//10
+            percent = int(num_events/print_freq)
             for e in events:
-                # Create dictionary of final state particles for easy access
+                # Get list of final state particles for easy access
                 fs_particles = util.get_final_state_particles(e)
-                event_ids = fs_particles.keys()
-                pT_tot = 0
-                for id in event_ids:
-                    if id in invisible_particles:
-                        invisible_momentum = util.FourMomentum.from_LHEparticles(fs_particles[id])
+                pT = np.array([0., 0.])
+                for particle in fs_particles:
+                    if particle.id in invisible_particles:
+                        invisible_momentum = util.FourMomentum.from_LHEparticle(
+                            particle)
 
-                        for particle in invisible_momentum:
-                            pT_tot += particle.transverse_momentum(vector_out=True)
+                        pT += invisible_momentum.transverse_momentum(vector_out=True)
 
                 # Calculate missing transverse energy
-                missing_pt = np.linalg.norm(pT_tot)
+                missing_pt = np.linalg.norm(pT)
                 data[cnt] = missing_pt
 
                 cnt += 1
-                if not cnt % progress_print_freq:
+                if not cnt % print_freq:
                     prog += 1
-                    print("%d%s of events processed." % (10*prog, "%"))
+                    print("%d%s of events processed." % (prog*percent, "%"))
 
             # Save result to the storage file
-            np.savetxt(res_file, data, fmt='%e',header="Missing transverse momentum (scalar) (MET)")
+            np.savetxt(res_file, data, fmt='%e',
+                       header="Missing transverse momentum (MET)")
             print("Stored calculations in %s" % res_file)
             print(util.sep)
 
-        # Create histogram
-        counts, bins = np.histogram(data, bins=450)
-        if f == 0:
-            first_bins = bins
+        # Create histogram (use fixed manual set binning)
+        counts, bins = np.histogram(data, bins=binning)
 
         # Normalise histogram, then store it
-        # (using the binning from first iteration to ensure identical binning)
-        counts = counts/np.sum(counts*np.diff(first_bins))
-        histograms.append([counts, first_bins])
+        counts = counts/np.sum(counts*np.diff(bins))
+        histograms.append([counts, bins])
 
         # Add histogram to plot
-        plot.add_histogram(counts, first_bins, label=lab[f], alpha=0.40)
+        plot.add_histogram(counts, bins, label=lab[f], alpha=0.40)
 
 # Calculate KL-divergence between LO and NLO distributions
 # tuple (count, bin_edges), Q-distribution representing the model
 LO_hist_pt10 = histograms[0]
 # tuple (count, bin_edges), P-distribution representing the data
 NLO_hist_pt10 = histograms[1]
-
 # tuple (count, bin_edges), Q-distribution representing the model
 LO_hist_pt1 = histograms[2]
 # tuple (count, bin_edges), P-distribution representing the data
