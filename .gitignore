@@ -112,3 +112,5 @@ dmypy.json
 # Auxiliary
 *.csv
 *debug*
+.train
+.test

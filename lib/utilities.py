@@ -1,12 +1,16 @@
 import numpy as np
+import pandas as pd
 import pylhe as lhe
 import matplotlib.pyplot as plt
+import seaborn as sns
 import lib.mssm_particles as mssm
 
-# Global constants
-sep = '-'*50
-pTcut = 20.  # GeV
+#mpl.rcParams['legend.facecolor'] = 'white'
 
+sns.set_context("paper")
+
+# Global constants
+sep = '-'*100
 
 class FourMomentum:
     def __init__(self, e=0, px=0, py=0, pz=0):
@@ -188,10 +192,10 @@ def check_jet_pt(event, pt_cut):
 
 def check_lepton_pt(event, pt_cut):
     pass
-    
+
 
 # LHE file tools
-def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0, pt_cut=20.):
+def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0):
     """
     :param file_1: path to the first lhe-file
     :param file_2: path to the second lhe-file
@@ -263,8 +267,8 @@ class Plot:
         if self.logx_enabled:
             self.ax.set_xscale('log')
 
-        self.ax.grid()
-
+        # Visual enhancement
+        self.ax.grid(True)
 
     def add_series(self, x, y, **kwargs):
         """
@@ -303,24 +307,21 @@ class Plot:
 
 
     def plot_histograms(self, show=True):
-        # See matplotlib.histogram documentation -- plot stacked histograms
-        # counts = [hist[0] for hist in self.histograms] 
-        # bins = [hist[1][:-1] for hist in self.histograms] 
-        # labels = [hist[2]["label"] for hist in self.histograms]
-        # self.ax.hist(bins, bins[0], label=labels, weights=counts, stacked=True, log=True)
+        # See matplotlib.histogram documentation
         for hist in self.histograms:
             count = hist[0]
             bins = hist[1]
-            self.ax.bar(bins[:-1] + np.diff(bins) / 2,
-                        count, np.diff(bins), **hist[2])
+            self.ax.hist(bins[:-1], bins, weights=count, histtype='step', alpha=1.0, **hist[2])
+            # Add smoothing curve to histogram
+            #self.add_series(bins[:-1], count, **hist[2])
         self.ax.legend()
         if show:
             plt.show()
 
 
     def plot_all(self):
-        self.plot_series(show=False)
         self.plot_histograms(show=False)
+        self.plot_series(show=False)
         plt.show()
 
 
@@ -340,7 +341,12 @@ class Plot:
     def from_config_file(filename):
         """
         Create plot with specific config from a prewritten textfile with configs??
-        Formate of file:
+        Format of file:
+            title = "my title"
+            xlabel = "my x label"
+            ylabel = "my y label"
+            xlimits = (x_min, x_max)
+            xlimits = (y_min, y_max)
             ...
         """
         pass

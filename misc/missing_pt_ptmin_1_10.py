@@ -1,17 +1,16 @@
 #!/usr/bin/python3
-import sys
-sys.path.insert(0, "..")
+import os, sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
 import matplotlib.pyplot as plt
-import os
 import lib.utilities as util
 import lib.statistics_tools as st
 from lib.mssm_particles import invisible_particles
 
 # Prepare plot object to visualise result
 x_label = r"$p_T^{miss}$ [GeV]"
-y_label = r"Density $[\mathrm{GeV}^{⁻1}]$"
+y_label = r"Events"
 title = r"$pp\rightarrow$ -11 1000022 11 1000022 j electroweak, $\sqrt{s} = 13$TeV"
 plot = util.Plot(x_label, y_label, title)
 
@@ -75,9 +74,21 @@ for p, pt in enumerate(filenames):
 
     result_filenames.append(result_files)
 
-# Create list to store histograms
+
+# Cut/filter parameters
+pt_cut = 100.
+
+
+# Create list to store histograms, and fixed binning
 histograms = []
-binning = np.linspace(0., 1.e3, 201)
+binning = np.linspace(0., 1.e3, 101)
+
+
+# Wrap all relevant cuts into one function
+def pass_cuts(event):
+    cut_1 = util.check_jet_pt(event, pt_cut)
+    return cut_1 
+
 
 for p, pt in enumerate(filenames):
     xsec = xsecs[p]
@@ -94,16 +105,26 @@ for p, pt in enumerate(filenames):
 
             # Open LHE-file and iterate through
             events, num_events = util.combine_LHE_files(
-                filename[0], filename[1], xsec[f][0], xsec[f][1], pt_cut=20.)
-            print("Running through %d events..." % num_events)
+                filename[0], filename[1], xsec[f][0], xsec[f][1], pt_cut)
+            print("Running analysis and cuts through %d events..." % num_events)
 
-            data = np.zeros(num_events)
+            data = []
 
             cnt = 0
             prog = 0
             print_freq = num_events//10
             percent = int(num_events/print_freq)
             for e in events:
+                # Print status
+                cnt += 1
+                if not cnt % print_freq:
+                    prog += 1
+                    print("%d%s" % (prog*percent, "%"))
+
+                # Apply general cuts/filters
+                if not pass_cuts(e): 
+                    continue
+
                 # Get list of final state particles for easy access
                 fs_particles = util.get_final_state_particles(e)
                 pT = np.array([0., 0.])
@@ -116,12 +137,7 @@ for p, pt in enumerate(filenames):
 
                 # Calculate missing transverse energy
                 missing_pt = np.linalg.norm(pT)
-                data[cnt] = missing_pt
-
-                cnt += 1
-                if not cnt % print_freq:
-                    prog += 1
-                    print("%d%s of events processed." % (prog*percent, "%"))
+                data.append(missing_pt)
 
             # Save result to the storage file
             np.savetxt(res_file, data, fmt='%e',
@@ -130,34 +146,28 @@ for p, pt in enumerate(filenames):
             print(util.sep)
 
         # Create histogram (use fixed manual set binning)
-        counts, bins = np.histogram(data, bins=binning)
+        counts, bins = np.histogram(data, bins=binning, density=True)
 
-        # Normalise histogram, then store it
-        counts = counts/np.sum(counts*np.diff(bins))
         histograms.append([counts, bins])
 
         # Add histogram to plot
-        plot.add_histogram(counts, bins, label=lab[f], alpha=0.40)
+        plot.add_histogram(counts, bins, label=lab[f], alpha=0.4)
 
 # Calculate KL-divergence between LO and NLO distributions
-# tuple (count, bin_edges), Q-distribution representing the model
+# Q-distribution representing the model
 LO_hist_pt10 = histograms[0]
-# tuple (count, bin_edges), P-distribution representing the data
+# P-distribution representing the data
 NLO_hist_pt10 = histograms[1]
-# tuple (count, bin_edges), Q-distribution representing the model
+# Q-distribution representing the model
 LO_hist_pt1 = histograms[2]
-# tuple (count, bin_edges), P-distribution representing the data
+# P-distribution representing the data
 NLO_hist_pt1 = histograms[3]
 
 kl_div_pt10 = st.KL_div(NLO_hist_pt10, LO_hist_pt10, base_two=True)
 kl_div_pt1 = st.KL_div(NLO_hist_pt1, LO_hist_pt1, base_two=True)
 
-plot.add_series(np.array([]), np.array(
-    []), label=r"KL-div(LO$\rightarrow$NLO, $p_T=10$GeV): %1.2e bits" % kl_div_pt10, lw=0)
-plot.add_series(np.array([]), np.array(
-    []), label=r"KL-div(LO$\rightarrow$NLO, $p_T=1$GeV): %1.2e bits" % kl_div_pt1, lw=0)
+plot.add_label(r"KL-div(LO$\rightarrow$NLO, $p_T=10$GeV): %1.2e bits"%kl_div_pt10)
+plot.add_label(r"KL-div(LO$\rightarrow$NLO, $p_T=1$GeV): %1.2e bits" %kl_div_pt1)
 
 # Plot data
 plot.plot_all()
-print("Done!")
-plt.show()
