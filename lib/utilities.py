@@ -1,16 +1,10 @@
 import numpy as np
-import pandas as pd
 import pylhe as lhe
-import matplotlib.pyplot as plt
-import seaborn as sns
 import lib.mssm_particles as mssm
 
-#mpl.rcParams['legend.facecolor'] = 'white'
-
-sns.set_context("paper")
-
 # Global constants
-sep = '-'*100
+sep = '-'*45
+
 
 class FourMomentum:
     def __init__(self, e=0, px=0, py=0, pz=0):
@@ -185,13 +179,18 @@ def get_final_state_particles(event):
     return fs_particles
 
 
-# Cuts and filters
-def check_jet_pt(event, pt_cut):
-    return not has_physical_jets(event, pt_cut)
 
+# Common kinematic variables
+def get_missing_pt(event):
+    fs_particles = get_final_state_particles(event)
+    pT = np.array([0., 0.])
+    for p in fs_particles:
+        if p.id in mssm.invisible_particles:
+            p_invs = FourMomentum.from_LHEparticle(p)
+            pT += p_invs.transverse_momentum(vector_out=True)
 
-def check_lepton_pt(event, pt_cut):
-    pass
+    return np.linalg.norm(pT)
+
 
 
 # LHE file tools
@@ -242,111 +241,3 @@ def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0):
 
     # return combined dataset, and number of events (tuple)
     return events, len(events)
-
-
-# Plotting tools
-class Plot:
-    def __init__(self, xlabel, ylabel, title, logy=False, logx=False):
-        self.xlabel = xlabel
-        self.ylabel = ylabel
-        self.title = title
-        self.logy_enabled = logy
-        self.logx_enabled = logx
-        self.series = []
-        self.histograms = []
-        self.fig = plt.figure(1)
-        self.ax = self.fig.add_subplot(1, 1, 1)
-
-        # Set title, axis labels, axis scales etc.
-        self.ax.set_title(title)
-        self.ax.set_xlabel(xlabel)
-        self.ax.set_ylabel(ylabel)
-
-        if self.logy_enabled:
-            self.ax.set_yscale('log')
-        if self.logx_enabled:
-            self.ax.set_xscale('log')
-
-        # Visual enhancement
-        self.ax.grid(True)
-
-    def add_series(self, x, y, **kwargs):
-        """
-        :param x: 1D np.array with x-data points
-        :param y: 1D np.array with y-data points
-        """
-        if x.ndim == 1 and y.ndim == 1 and len(x) == len(y):
-            self.series.append((x, y, kwargs))
-        else:
-            raise Exception("Error: appended \
-            series has to be an 1-D np.array and have equal dimensions.")
-
-
-    def add_histogram(self, counts, bins, **kwargs):
-        """
-        :param counts: 1D np.array of the counts
-        :param bins: see docs for np.historgram
-        """
-        if counts.ndim == 1:
-            self.histograms.append((counts, bins, kwargs))
-        else:
-            raise Exception("Error: appended \
-            histogram data has to be an 1-D np.array.")
-
-
-    def add_label(self, label, **kwargs):
-        self.ax.plot([], [], label=label, lw=0, **kwargs)
-
-
-    def plot_series(self, show=True):
-        for s in self.series:
-            self.ax.plot(s[0], s[1], **s[2])
-        self.ax.legend()
-        if show:
-            plt.show()
-
-
-    def plot_histograms(self, show=True):
-        # See matplotlib.histogram documentation
-        for hist in self.histograms:
-            count = hist[0]
-            bins = hist[1]
-            self.ax.hist(bins[:-1], bins, weights=count, histtype='step', alpha=1.0, **hist[2])
-            # Add smoothing curve to histogram
-            #self.add_series(bins[:-1], count, **hist[2])
-        self.ax.legend()
-        if show:
-            plt.show()
-
-
-    def plot_all(self):
-        self.plot_histograms(show=False)
-        self.plot_series(show=False)
-        plt.show()
-
-
-    def set_xlim(self, x_min, x_max):
-        self.ax.set_xlim(x_min, x_max)
-
-
-    def set_ylim(self, y_min, y_max):
-        self.ax.set_ylim(y_min, y_max)   
-
-
-    def savefig(self, filename):
-        self.ax.savefig(filename)
-
-
-    @staticmethod
-    def from_config_file(filename):
-        """
-        Create plot with specific config from a prewritten textfile with configs??
-        Format of file:
-            title = "my title"
-            xlabel = "my x label"
-            ylabel = "my y label"
-            xlimits = (x_min, x_max)
-            xlimits = (y_min, y_max)
-            ...
-        """
-        pass

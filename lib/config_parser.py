@@ -8,13 +8,14 @@ def read_config_file(filename, delimiter='='):
     # Open file
     with open(filename, 'r') as f:
         lines = f.readlines()
-        
+
         output = {}
         # Iterate through file
         for l, line in enumerate(lines):
-            if line[0] == '#':
+
+            if line[0] == '#' or line[0] == '\n':
                 continue
-            
+
             # Remove white space and new line char
             line = line.replace(' ', '').replace('\n', '')
 
@@ -29,7 +30,7 @@ def read_config_file(filename, delimiter='='):
             except ValueError as v:
                 print("Error reading '%s':"%filename,v)
                 exit(1)
-                
+ 
             # Add pair to dict
             output[key] = value
 
