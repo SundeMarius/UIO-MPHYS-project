@@ -2,9 +2,6 @@ import numpy as np
 import pylhe as lhe
 import lib.mssm_particles as mssm
 
-# Global constants
-sep = '-'*45
-
 
 class FourMomentum:
     def __init__(self, e=0, px=0, py=0, pz=0):
@@ -39,7 +36,8 @@ class FourMomentum:
 
     def __add__(self, p):
         """
-        Define addition between two FourMomentum objects p1 and p2 (p1 + p2)
+        Define addition between two FourMomentum objects p1 and p2
+        (p1 + p2)
         """
         new_p = FourMomentum()
         new_p.e = self.e + p.e
@@ -50,13 +48,14 @@ class FourMomentum:
 
     def __sub__(self, p):
         """
-        Define subtraction between two FourMomentum objects p1 and p2 (p1 - p2)
+        Define subtraction between two FourMomentum objects p1 and p2
+        (p1 - p2)
         """
         return self + (-1.0 * p)
 
     def norm(self):
         """
-        The Minkowski norm of a four vector p: sqrt(p * p)
+        The Minkowski norm of a four vector p: sqrt(p * p) (= particle mass)
         """
         return np.sqrt(self * self)
 
@@ -70,16 +69,13 @@ class FourMomentum:
     def transverse_momentum(self, vector_out=False):
         """
         Get transverse momentum pT
-        (transverse plane orthogonal to z-axis is conventional)
+        (xy-plane is conventionally the transverse plane, beam axis along z)
 
         Can return components or the magnitude.
         """
         p = np.array([self.px, self.py])
 
-        if vector_out:
-            return p
-        else:
-            return np.linalg.norm(p)
+        return p if vector_out else np.linalg.norm(p)
 
     def print(self, unit_e='GeV', unit_p='GeV'):
         """
@@ -88,7 +84,7 @@ class FourMomentum:
         for mu in ['e', 'px', 'py', 'pz']:
             attribute = getattr(self, mu)
             if mu == 'e':
-                print(" %s: %e %s" % (mu, attribute, unit_e))
+                print("%s : %e %s" % (mu, attribute, unit_e))
             else:
                 print("%s: %e %s" % (mu, attribute, unit_p))
 
@@ -137,99 +133,52 @@ def is_onshell(p, m, rtol=1e-2):
     return np.isclose(p.norm(), m, rtol=rtol)
 
 
-# Jet Tools
-def is_jet(particle):
-    """
-    :param particle: LHEparticle object
-    :return: True if particle is a parton jet candidate, False otherwise
-    """
-    return (particle.status == 1) and (abs(particle.id) in mssm.jet_hard)
 
+# LHE tools
+def is_final_state(particle):
 
-def has_physical_jets(event, pt_cut):
-    jets = get_jets(event)
-
-    if len(jets) > 0:
-        leading_jet_pt = max([p.transverse_momentum() for p in jets])
-
-        # if leading pt is above the cut, return True (jet is physical)
-        if leading_jet_pt > pt_cut:
-            return True
-
-    return False
-    
-
-def get_jets(event):
-    jets = []
-    for p in event.particles:
-        if is_jet(p):
-            jets.append(p)
-
-    return FourMomentum.from_LHEparticles(jets)
+    return particle.status == 1
 
 
 def get_final_state_particles(event):
-    fs_particles = []
 
-    for p in event.particles:
-        # if particle is final state, add to list
-        if p.status == 1:
-            fs_particles.append(p)
-
-    return fs_particles
+    return [p for p in event.particles if is_final_state(p)]
 
 
-
-# Common kinematic variables
-def get_missing_pt(event):
-    fs_particles = get_final_state_particles(event)
-    pT = np.array([0., 0.])
-    for p in fs_particles:
-        if p.id in mssm.invisible_particles:
-            p_invs = FourMomentum.from_LHEparticle(p)
-            pT += p_invs.transverse_momentum(vector_out=True)
-
-    return np.linalg.norm(pT)
-
-
-
-# LHE file tools
-def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0):
+def combine_LHE_files(file_1, file_2):
     """
     :param file_1: path to the first lhe-file
     :param file_2: path to the second lhe-file
-    :param xsec_1: total xsec for process in file_1
-    :param xsec_2: total xsec for process in file_2
 
     return: List of events from file_1 and file_2 in proportion to their
     cross sections, resp.
     """
     events_1 = [e for e in lhe.readLHE(file_1)]
+    events_1_init = lhe.readLHEInit(file_1)
+    events_1_info = events_1_init['procInfo'][0]
+    xsec_1 = events_1_info["xSection"]
     n1 = len(events_1)
-    if not xsec_1:
-        events_1_init = lhe.readLHEInit(file_1)
-        events_1_info = events_1_init['procInfo'][0]
-        xsec_1 = events_1_info["xSection"]
-    print("Dataset 1 initialised (%e events), cross section: %e pb."%(n1, xsec_1))
+    print(f'Dataset 1 initialised ({n1:,} events), cross section: {xsec_1:e} pb.')
 
     events_2 = [e for e in lhe.readLHE(file_2)]
+    events_2_init = lhe.readLHEInit(file_2)
+    events_2_info = events_2_init['procInfo'][0]
+    xsec_2 = events_2_info['xSection']
     n2 = len(events_2)
-    if not xsec_2:
-        events_2_init = lhe.readLHEInit(file_2)
-        events_2_info = events_2_init['procInfo'][0]
-        xsec_2 = events_2_info['xSection']
-    print("Dataset 2 initialised (%e events), cross section: %e pb."%(n2, xsec_2))
+    print(f'Dataset 2 initialised ({n2:,} events), cross section: {xsec_2:e} pb.')
 
-    # Sampling probability for set 1
+    # Sampling probability for dataset 1
     p1 = xsec_1/(xsec_1 + xsec_2)
 
     events = []
+
     # Main loop (drawing samples while both sets are non empty)
     while n1 and n2:
+
         # pick a number 0<x<1 randomly
         x = np.random.uniform(0., 1.)
 
-        # pick an event depending on outcome, remove element after selection
+        # pick an event depending on x, remove element after selection
         if x < p1:
             e = events_1.pop()
             n1 -= 1
@@ -241,3 +190,48 @@ def combine_LHE_files(file_1, file_2, xsec_1=0, xsec_2=0):
 
     # return combined dataset, and number of events (tuple)
     return events, len(events)
+
+
+
+# Particle tools
+def is_jet(particle):
+
+    return abs(particle.id) in mssm.jet_hard and is_final_state(particle) 
+
+
+def get_jets(event):
+ 
+    return [p for p in event.particles if is_jet(p)]
+
+
+def has_physical_jets(event, pt_cut):
+
+    jets = FourMomentum.from_LHEparticles(get_jets(event))
+
+    for jet in jets:
+        if jet.transverse_momentum() > pt_cut:
+            return True
+    return False
+
+
+def is_charged_lepton(particle):
+
+    return abs(particle.id) in mssm.charged_leptons
+
+
+def is_invisible(particle):
+
+    return particle.id in mssm.invisible_particles
+
+
+
+# Common high level kinematic variables
+def get_missing_pt(event):
+
+    invs_particles = [p for p in get_final_state_particles(event) if is_invisible(p)]
+    pT = np.zeros(2)
+
+    for p in invs_particles:
+        p = FourMomentum.from_LHEparticle(p)
+        pT += p.transverse_momentum(vector_out=True)
+    return np.linalg.norm(pT)

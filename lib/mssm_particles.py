@@ -1,7 +1,8 @@
 """
-Import this file to have access to different particle PDG ID's
+Import this file to have access to different particle PDG's
 
-Version: WIP
+Version: 1.0
+Author: M.S.S
 """
 quarks = [i for i in range(1,7)]
 squarks = [1000000+i for i in range(1,7)]

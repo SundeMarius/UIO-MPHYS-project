@@ -12,8 +12,7 @@ def combine_two_bins(count, bin_edges, i):
 
     :return : A new histogram where bin "i" has been resized.
     """
-    
-    #Make copies of count and bins, turn them to lists for convenience
+    # Make copies of count and bins, turn them to lists for convenience
     new_count = list(count[:])
     new_bins = list(bin_edges[:])
     N = len(new_count)
@@ -39,6 +38,7 @@ def combine_two_bins(count, bin_edges, i):
     return np.array(new_count), np.array(new_bins)
 
 
+
 # STATISTICAL DISCRIMINANTS
 # Kullback-Leibler divergence
 def KL_div(P, Q, base_two=False):
@@ -47,8 +47,10 @@ def KL_div(P, Q, base_two=False):
     :param Q: numpy.histogram object
 	:param base_two: Set True if you want rel.entr in #bits (default: False gives #nats)
     
-    :return : The Kullback-Leibler divergence (avg. relative entropy) between the two input distributions 
-    (divergence/information gain going from Q to P)
+    :return : The Kullback-Leibler divergence.
+    
+    "Avg. relative entropy" between the two input distributions 
+    (divergence/information gain going from Q to P).
     """
     P_count, P_bins = P
     Q_count, Q_bins = Q
@@ -58,7 +60,7 @@ def KL_div(P, Q, base_two=False):
         i = list(Q_count).index(0)
         Q_count, Q_bins = combine_two_bins(Q_count, Q_bins, i)
         
-        #Do the same change in P-histogram
+        # Do the same change in P-histogram
         P_count, P_bins = combine_two_bins(P_count, P_bins, i)
     
     # Check P-histogram as well     
@@ -66,28 +68,25 @@ def KL_div(P, Q, base_two=False):
         i = list(P_count).index(0)
         P_count, P_bins = combine_two_bins(P_count, P_bins, i)
         
-        #Do the same change in Q-histogram
+        # Do the same change in Q-histogram
         Q_count, Q_bins = combine_two_bins(Q_count, Q_bins, i)
 
-    #Normalise the inputs to be safe
-    P_sum = np.sum(P_count * np.diff(P_bins))
-    Q_sum = np.sum(Q_count * np.diff(Q_bins))
+    # Normalise inputs to be safe
+    P_count /= np.sum(P_count * np.diff(P_bins))
+    Q_count /= np.sum(Q_count * np.diff(Q_bins))
 
-    Q_count = Q_count/Q_sum
-    P_count = P_count/P_sum
-
-    #Calculate KL-divergence and return the value
+    # Calculate KL-divergence and return the value
     rel_entropy_array = rel_entr(P_count, Q_count)
     kl_d = np.sum(rel_entropy_array * np.diff(P_bins)) 
     
-    if base_two:
-        return kl_d/np.log(2.)
-    else:
-        return kl_d
+    return kl_d/np.log(2.) if base_two else kl_d
+
+
 
 # Earth movers distance
 def emd(Q, P):
     pass
+
 
 
 # SAMPLING TOOLS
