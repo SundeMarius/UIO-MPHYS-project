@@ -44,7 +44,7 @@ sns.histplot(ax=axes[0], data=df_LO_NLO, x=index, stat='density', bins=binning, 
 relative_diff = 100.*(binned_df_LO_NLO - binned_df_LO).div(binned_df_LO)
 x = binning[:-1] + np.diff(binning)/2.
 sns.scatterplot(ax=axes[1], x=x, y=relative_diff)
-sns.lineplot(ax=axes[1], x=x, y=relative_diff, color='red', lw=0.8)
+#sns.lineplot(ax=axes[1], x=x, y=relative_diff, color='red', lw=0.8)
 axes[1].axhline(0., ls='--')
 
 axes[0].set_ylabel(y_label)

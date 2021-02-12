@@ -1,0 +1,11 @@
+# Cuts to apply 
+jet_pt_cut     =  20.
+missing_pt_cut =   0.
+
+# LHE-file directories
+LO_path = /home/mariusss/University/master_project/data/LO/200_50
+LO_NLO_path = /home/mariusss/University/master_project/data/LO+NLO/200_50
+
+# Output files
+output_path = /home/mariusss/University/master_project/data/xgboost_input_data
+output_file = xgboost_dataset_MseL200_Mneu50.csv

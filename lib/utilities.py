@@ -53,6 +53,12 @@ class FourMomentum:
         """
         return self + (-1.0 * p)
 
+    def components(self):
+        """
+        Return components of the four-momentum as np.array
+        """
+        return np.array([self.e, self.px, self.py, self.pz])
+
     def norm(self):
         """
         The Minkowski norm of a four vector p: sqrt(p * p) (= particle mass)
@@ -108,7 +114,6 @@ class FourMomentum:
         """
         return [FourMomentum(p.e, p.px, p.py, p.pz) for p in lhe_particles]
 
-
 # General tools for HEP
 def invariant_mass(particle_momenta):
     """
@@ -143,6 +148,19 @@ def is_final_state(particle):
 def get_final_state_particles(event):
 
     return [p for p in event.particles if is_final_state(p)]
+
+
+def get_daughters(parent_pdg, event_particles):
+
+    pdgs = [p.id for p in event_particles] 
+
+    parent_index = pdgs.index(parent_pdg)
+    # The line number in the LHE event 
+    # (used to identify which parent a particle belongs too)
+    parent_position = parent_index + 1
+    
+    return [p for p in event_particles if p.mother1 == parent_position]
+    
 
 
 def combine_LHE_files(file_1, file_2):
