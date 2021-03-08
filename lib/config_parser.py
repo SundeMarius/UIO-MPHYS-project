@@ -1,8 +1,8 @@
 """
 Parses a text file with config variables to a dictionary
 
-Author: M.S.S
 """
+
 
 def read_config_file(filename, delimiter='='):
     # Open file
@@ -24,13 +24,12 @@ def read_config_file(filename, delimiter='='):
                 element = line.split(delimiter)
                 if len(element) != 2:
                     raise ValueError(
-                    ("line %d has invalid format." 
-                    " Use one single delimiter '%c'.")%(l+1, delimiter))
+                    ("line %d has invalid format. Use one single delimiter '%c'.") % (l+1, delimiter))
                 key, value = element
             except ValueError as v:
-                print("Error reading '%s':"%filename,v)
+                print("Error reading '%s':" % filename, v)
                 exit(1)
- 
+
             # Add pair to dict
             output[key] = value
 

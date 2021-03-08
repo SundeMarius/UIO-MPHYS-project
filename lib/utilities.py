@@ -6,9 +6,9 @@ import lib.mssm_particles as mssm
 class FourMomentum:
     def __init__(self, e=0, px=0, py=0, pz=0):
         """
-        NOTE: Working in natural units (hbar = c = 1)
+        NOTE: Working in natural units (hbar = c = 1) by default
 
-        :param e: Energy
+        :param  e: Energy
         :param px: x-comp 3-momentum
         :param py: y-comp 3-momentum
         :param pz: z-comp 3-momentum
@@ -61,14 +61,13 @@ class FourMomentum:
 
     def norm(self):
         """
-        The Minkowski norm of a four vector p: sqrt(p * p) (= particle mass)
+        Return the norm of a four vector p: sqrt(p * p) (= particle mass)
         """
         return np.sqrt(self * self)
 
     def three_momentum(self):
         """
-        :return: Spatial part of the four momentum (3-momentum)
-        as np.array [px, py, pz]
+        Spatial part of the four momentum (three-momentum)
         """
         return np.array([self.px, self.py, self.pz])
 
@@ -77,7 +76,7 @@ class FourMomentum:
         Get transverse momentum pT
         (xy-plane is conventionally the transverse plane, beam axis along z)
 
-        Can return components or the magnitude.
+        Return components or the magnitude.
         """
         p = np.array([self.px, self.py])
 
@@ -114,6 +113,7 @@ class FourMomentum:
         """
         return [FourMomentum(p.e, p.px, p.py, p.pz) for p in lhe_particles]
 
+
 # General tools for HEP
 def invariant_mass(particle_momenta):
     """
@@ -130,13 +130,12 @@ def invariant_mass(particle_momenta):
 
 def is_onshell(p, m, rtol=1e-2):
     """
-    :param p: FourMomentum object (of some particle)
+    :param p: FourMomentum object
     :param m: mass of particle
     :param tol: tolerance to be on-shell
     :return: True if onshell, False otherwise
     """
     return np.isclose(p.norm(), m, rtol=rtol)
-
 
 
 # LHE tools
@@ -152,15 +151,12 @@ def get_final_state_particles(event):
 
 def get_daughters(parent_pdg, event_particles):
 
-    pdgs = [p.id for p in event_particles] 
+    pdgs = [p.id for p in event_particles]
 
-    parent_index = pdgs.index(parent_pdg)
-    # The line number in the LHE event 
-    # (used to identify which parent a particle belongs too)
-    parent_position = parent_index + 1
-    
-    return [p for p in event_particles if p.mother1 == parent_position]
-    
+    # The line number in the LHE event specifies the parent
+    parent_ln = pdgs.index(parent_pdg) + 1
+
+    return [p for p in event_particles if p.mother1 == parent_ln]
 
 
 def combine_LHE_files(file_1, file_2):
@@ -206,19 +202,18 @@ def combine_LHE_files(file_1, file_2):
 
         events.append(e)
 
-    # return combined dataset, and number of events (tuple)
+    # return combined dataset, number of events (tuple)
     return events, len(events)
-
 
 
 # Particle tools
 def is_jet(particle):
 
-    return abs(particle.id) in mssm.jet_hard and is_final_state(particle) 
+    return (abs(particle.id) in mssm.jet_hard) and is_final_state(particle)
 
 
 def get_jets(event):
- 
+
     return [p for p in event.particles if is_jet(p)]
 
 
@@ -239,17 +234,16 @@ def is_charged_lepton(particle):
 
 def is_invisible(particle):
 
-    return particle.id in mssm.invisible_particles
-
+    return abs(particle.id) in mssm.invisible_particles
 
 
 # Common high level kinematic variables
 def get_missing_pt(event):
 
     invs_particles = [p for p in get_final_state_particles(event) if is_invisible(p)]
-    pT = np.zeros(2)
 
-    for p in invs_particles:
-        p = FourMomentum.from_LHEparticle(p)
-        pT += p.transverse_momentum(vector_out=True)
+    momenta = FourMomentum.from_LHEparticles(invs_particles)
+
+    pT = sum([p.transverse_momentum(vector_out=True) for p in momenta])
+
     return np.linalg.norm(pT)

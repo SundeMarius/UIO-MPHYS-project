@@ -7,6 +7,6 @@ LO_path = /home/mariusss/University/master_project/data/LO/200_50
 LO_NLO_path = /home/mariusss/University/master_project/data/LO+NLO/200_50
 
 # Output files
-output_path = /home/mariusss/University/master_project/data/xgboost_input_data
-LO_file = LO_output_MseL200_Mneu50_pt_cut20.csv
-LO_NLO_file = LO_NLO_output_MseL200_Mneu50_pt_cut20.csv
+output_path = /home/mariusss/University/master_project/data/input_data
+LO_file = LO_output_MseL200_Mneu50.csv
+LO_NLO_file = LO_NLO_output_MseL200_Mneu50.csv
