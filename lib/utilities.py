@@ -78,9 +78,27 @@ class FourMomentum:
 
         Return components or the magnitude.
         """
-        p = np.array([self.px, self.py])
+        pt = np.array([self.px, self.py])
 
-        return p if vector_out else np.linalg.norm(p)
+        return pt if vector_out else np.sqrt(pt.dot(pt))
+
+    def collider_coordinates(self):
+        """
+        Calculates pt, phi and eta (pseudo-rapidity) and return them
+        as an array.
+
+        Collider representation of three momentum.
+
+        tan^2 (theta/2) = (p - p_z)/(p + p_z)
+        """
+        p = self.three_momentum()
+        p = np.sqrt(p.dot(p))
+
+        pt = self.transverse_momentum()
+        phi = np.arctan2(self.py, self.px)
+        eta = .5*np.log((p + self.pz)/(p - self.pz))
+
+        return np.array([pt, phi, eta])
 
     def print(self, unit_e='GeV', unit_p='GeV'):
         """
@@ -240,9 +258,9 @@ def is_invisible(particle):
 # Common high level kinematic variables
 def get_missing_pt(event):
 
-    invs_particles = [p for p in get_final_state_particles(event) if is_invisible(p)]
+    invs_p = [p for p in get_final_state_particles(event) if is_invisible(p)]
 
-    momenta = FourMomentum.from_LHEparticles(invs_particles)
+    momenta = FourMomentum.from_LHEparticles(invs_p)
 
     pT = sum([p.transverse_momentum(vector_out=True) for p in momenta])
 

@@ -27,7 +27,7 @@ sns.set_style(custom_style)
 if len(sys.argv) != 3:
 
     print("Please provide exactly two arguments: "
-          "path to LO-csv-dataset, path to LO+NLO-csv-dataset).")
+          "path to LO-csv-dataset, path to LO+NLO-csv-dataset")
     sys.exit(1)
 
 

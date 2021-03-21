@@ -87,7 +87,7 @@ for f, files in enumerate([LO_files, LO_NLO_files]):
             if ans == 'y':
                 os.remove(output_filename)
             else:
-                sys.exit(1)
+                sys.exit()
 
         # Open LHE-files from each process, combine
         i += 1
@@ -95,7 +95,8 @@ for f, files in enumerate([LO_files, LO_NLO_files]):
         file_2 = files[1].pop()
         print("Combining datasets (%d/%d)..." % (i, number_of_file_pairs))
         events, num_events = util.combine_LHE_files(file_1, file_2)
-        print(f"Running analysis and cuts through {num_events:,} events...", end='')
+        print(("Running analysis and cuts through "
+              f"{num_events:,} events..."), end='')
 
         for e in events:
 

@@ -16,8 +16,8 @@ path_LO_NLO = config['LO_NLO_path']
 
 # Path to desired destination of the processed output files (.csv)
 path_to_output = config['output_path']
-output_filename_LO = os.path.join(path_to_output, config['LO_file'])
-output_filename_LO_NLO = os.path.join(path_to_output, config['LO_NLO_file'])
+# Name of output file
+output_filename = os.path.join(path_to_output, config['output_file'])
 
 
 # Containers for LHE files
@@ -44,11 +44,15 @@ for sub_dir in sub_dirs_LO_NLO:
 
 
 kin_vars_keys = [
-    'missing_pt_GeV',
-    'leading_lepton_pt_GeV'
+    'mll',
+    'mt',
+    'ht',
+    'met/ht',
+    'delta-phi',
+    'delta-R',
 ]
 
-data = {var: [] for var in kin_vars_keys}
+data = {'target': [], **{var: [] for var in kin_vars_keys}}
 
 
 # Cut/filter parameters
@@ -69,30 +73,27 @@ def pass_cuts(event):
 
 
 # Iterate through available files
-output_filenames = [output_filename_LO, output_filename_LO_NLO]
-created_datasets = []
+write_header = True
 
 for f, files in enumerate([LO_files, LO_NLO_files]):
-
-    output = output_filenames[f]
 
     i = 0
     ans = 'y'
     number_of_file_pairs = min(len(files[0]), len(files[1]))
-    write_header = True
 
     # While there are pair of files to combine.
     while i < number_of_file_pairs:
 
         # Check if output file exists
-        if write_header and os.path.isfile(output):
+        if write_header and os.path.isfile(output_filename):
 
-            ans = input("'%s' already exists. Overwrite? (y,N): " % output).lower()
+            ans = input("'%s' already exists. Overwrite? (y,N): " %
+                        output_filename).lower()
 
             if ans == 'y':
-                os.remove(output)
+                os.remove(output_filename)
             else:
-                break
+                sys.exit()
 
         # Open LHE-files from each process, combine
         i += 1
@@ -100,7 +101,8 @@ for f, files in enumerate([LO_files, LO_NLO_files]):
         file_2 = files[1].pop()
         print("Combining datasets (%d/%d)..." % (i, number_of_file_pairs))
         events, num_events = util.combine_LHE_files(file_1, file_2)
-        print(f"Running analysis and cuts through {num_events:,} events...", end='')
+        print(("Running analysis and cuts through "
+               f"{num_events:,} events..."), end='')
 
         for e in events:
 
@@ -108,32 +110,52 @@ for f, files in enumerate([LO_files, LO_NLO_files]):
             if not pass_cuts(e):
                 continue
 
-            # Declare event variables of interest
-            pT = np.zeros(2)
-            leading_lepton_pt = 0.
-
+            p_invs = util.FourMomentum()
+            p_leptons = []
             for particle in util.get_final_state_particles(e):
 
                 p = util.FourMomentum.from_LHEparticle(particle)
 
+                # Collect leptons (e+ & e-)
+                if util.is_charged_lepton(particle):
+                    p_leptons.append(p)
+                    continue
+
                 # Missing pt
                 if util.is_invisible(particle):
-                    pT += p.transverse_momentum(vector_out=True)
-
-                # Leading Lepton pt
-                elif util.is_charged_lepton(particle):
-                    pt = p.transverse_momentum()
-                    leading_lepton_pt = max(pt, leading_lepton_pt)
+                    p_invs = p_invs + p
+                    continue
 
             # Calculations
-            missing_pt = np.linalg.norm(pT)
+            p_l1, p_l2 = p_leptons
+            p_lep_tot = p_l1 + p_l2
+
+            pt_l1, phi_l1, eta_l1 = p_l1.collider_coordinates()
+            pt_l2, phi_l2, eta_l2 = p_l2.collider_coordinates()
+
+            pt_leps, phi_leps = p_lep_tot.collider_coordinates()[:2]
+            pt_invs, phi_invs = p_invs.collider_coordinates()[:2]
+            dphi = phi_l2 - phi_l1
+            deta = eta_l2 - eta_l1
+
+            mll = p_lep_tot.norm()
+            delta_R = np.sqrt(dphi*dphi + deta*deta)
+            delta_phi = phi_invs - phi_leps
+            mt = np.sqrt(2*pt_l1*pt_l2*(1. - np.cos(delta_phi)))
+            ht = pt_l1 + pt_l2
+            met_ht_ratio = pt_invs/ht
 
             # NOTE: elements must be in same order as data dictionary
             kin_vars = [
-                missing_pt,
-                leading_lepton_pt
+                mll,
+                mt,
+                ht,
+                met_ht_ratio,
+                delta_phi,
+                delta_R,
             ]
 
+            data['target'].append(f)
             # Append results to data structure
             for key, dat in zip(kin_vars_keys, kin_vars):
                 data[key].append(dat)
@@ -141,10 +163,10 @@ for f, files in enumerate([LO_files, LO_NLO_files]):
         print(" Done.")
 
         # Write to output file
-        print("Dumping processed data to %s..." % output, end='')
+        print("Dumping processed data to %s..." % output_filename, end='')
         df = pd.DataFrame(data)
         df.to_csv(
-            output,
+            output_filename,
             header=write_header,
             float_format='%.6e',
             index=False,
@@ -159,10 +181,8 @@ for f, files in enumerate([LO_files, LO_NLO_files]):
         write_header = False
 
     if ans == 'y':
-        created_datasets.append(output)
         print("Combination and analysis successful.")
         print(60*'-')
 
-if created_datasets:
-    print(*created_datasets, sep=', ', end=' ')
-    print("created successfully.")
+if ans == 'y':
+    print(output_filename, " created successfully.")
