@@ -1,0 +1,99 @@
+BDT tuning logger -- program started: Fri Apr  9 22:18:35 2021
+---------------------------------------------------------------
+auc_train: 5.417e-01, auc_test: 5.412e-01
+auc_train: 5.419e-01, auc_test: 5.411e-01
+auc_train: 5.431e-01, auc_test: 5.420e-01
+auc_train: 5.444e-01, auc_test: 5.419e-01
+auc_train: 5.455e-01, auc_test: 5.419e-01
+auc_train: 5.484e-01, auc_test: 5.415e-01
+auc_train: 5.508e-01, auc_test: 5.413e-01
+------------------------------------------
+auc_train: 5.436e-01, auc_test: 5.424e-01
+auc_train: 5.443e-01, auc_test: 5.424e-01
+auc_train: 5.461e-01, auc_test: 5.424e-01
+auc_train: 5.478e-01, auc_test: 5.423e-01
+auc_train: 5.471e-01, auc_test: 5.417e-01
+auc_train: 5.497e-01, auc_test: 5.415e-01
+auc_train: 5.530e-01, auc_test: 5.412e-01
+------------------------------------------
+auc_train: 5.446e-01, auc_test: 5.429e-01
+auc_train: 5.447e-01, auc_test: 5.424e-01
+auc_train: 5.478e-01, auc_test: 5.425e-01
+auc_train: 5.496e-01, auc_test: 5.421e-01
+auc_train: 5.533e-01, auc_test: 5.417e-01
+auc_train: 5.572e-01, auc_test: 5.413e-01
+auc_train: 5.556e-01, auc_test: 5.411e-01
+------------------------------------------
+auc_train: 5.448e-01, auc_test: 5.427e-01
+auc_train: 5.452e-01, auc_test: 5.425e-01
+auc_train: 5.477e-01, auc_test: 5.424e-01
+auc_train: 5.484e-01, auc_test: 5.419e-01
+auc_train: 5.495e-01, auc_test: 5.418e-01
+auc_train: 5.556e-01, auc_test: 5.414e-01
+auc_train: 5.582e-01, auc_test: 5.409e-01
+------------------------------------------
+auc_train: 5.445e-01, auc_test: 5.427e-01
+auc_train: 5.465e-01, auc_test: 5.423e-01
+auc_train: 5.503e-01, auc_test: 5.423e-01
+auc_train: 5.516e-01, auc_test: 5.417e-01
+auc_train: 5.515e-01, auc_test: 5.419e-01
+auc_train: 5.554e-01, auc_test: 5.408e-01
+auc_train: 5.658e-01, auc_test: 5.398e-01
+------------------------------------------
+auc_train: 5.452e-01, auc_test: 5.425e-01
+auc_train: 5.458e-01, auc_test: 5.424e-01
+auc_train: 5.492e-01, auc_test: 5.420e-01
+auc_train: 5.523e-01, auc_test: 5.413e-01
+auc_train: 5.520e-01, auc_test: 5.416e-01
+auc_train: 5.575e-01, auc_test: 5.405e-01
+auc_train: 5.670e-01, auc_test: 5.396e-01
+------------------------------------------
+auc_train: 5.451e-01, auc_test: 5.427e-01
+auc_train: 5.464e-01, auc_test: 5.424e-01
+auc_train: 5.486e-01, auc_test: 5.424e-01
+auc_train: 5.512e-01, auc_test: 5.418e-01
+auc_train: 5.523e-01, auc_test: 5.405e-01
+auc_train: 5.614e-01, auc_test: 5.396e-01
+auc_train: 5.649e-01, auc_test: 5.393e-01
+------------------------------------------
+auc_train: 5.449e-01, auc_test: 5.422e-01
+auc_train: 5.468e-01, auc_test: 5.420e-01
+auc_train: 5.491e-01, auc_test: 5.423e-01
+auc_train: 5.524e-01, auc_test: 5.411e-01
+auc_train: 5.543e-01, auc_test: 5.403e-01
+auc_train: 5.588e-01, auc_test: 5.401e-01
+auc_train: 5.698e-01, auc_test: 5.393e-01
+------------------------------------------
+auc_train: 5.449e-01, auc_test: 5.429e-01
+auc_train: 5.480e-01, auc_test: 5.424e-01
+auc_train: 5.494e-01, auc_test: 5.420e-01
+auc_train: 5.524e-01, auc_test: 5.415e-01
+auc_train: 5.551e-01, auc_test: 5.406e-01
+auc_train: 5.613e-01, auc_test: 5.398e-01
+auc_train: 5.725e-01, auc_test: 5.388e-01
+------------------------------------------
+auc_train: 5.457e-01, auc_test: 5.424e-01
+auc_train: 5.465e-01, auc_test: 5.422e-01
+auc_train: 5.484e-01, auc_test: 5.425e-01
+auc_train: 5.528e-01, auc_test: 5.408e-01
+auc_train: 5.570e-01, auc_test: 5.401e-01
+auc_train: 5.618e-01, auc_test: 5.393e-01
+auc_train: 5.727e-01, auc_test: 5.378e-01
+------------------------------------------
+auc_train: 5.455e-01, auc_test: 5.420e-01
+auc_train: 5.482e-01, auc_test: 5.417e-01
+auc_train: 5.487e-01, auc_test: 5.416e-01
+auc_train: 5.540e-01, auc_test: 5.407e-01
+auc_train: 5.551e-01, auc_test: 5.396e-01
+auc_train: 5.629e-01, auc_test: 5.389e-01
+auc_train: 5.691e-01, auc_test: 5.382e-01
+------------------------------------------
+auc_train: 5.454e-01, auc_test: 5.422e-01
+auc_train: 5.469e-01, auc_test: 5.416e-01
+auc_train: 5.502e-01, auc_test: 5.416e-01
+auc_train: 5.531e-01, auc_test: 5.408e-01
+auc_train: 5.577e-01, auc_test: 5.393e-01
+auc_train: 5.613e-01, auc_test: 5.387e-01
+auc_train: 5.723e-01, auc_test: 5.376e-01
+------------------------------------------
+BDT tuning logger -- program ended: Fri Apr  9 22:24:24 2021

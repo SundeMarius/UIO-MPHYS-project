@@ -1,11 +1,14 @@
 #!/usr/bin/python3
 import os
 import sys
-import pandas as pd
-import numpy as np
-import lib.utilities as util
-import lib.config_parser as parse
 
+import pandas as pd
+
+from math import sqrt, cos
+from mt2 import mt2
+
+import lib.config_parser as parse
+import lib.utilities as util
 
 # Parse config file with paths/cuts
 config = parse.read_config_file(sys.argv[1])
@@ -46,7 +49,9 @@ for sub_dir in sub_dirs_LO_NLO:
 kin_vars_keys = [
     'mll',
     'mt',
+    'mt2',
     'ht',
+    'met',
     'met/ht',
     'delta-phi',
     'delta-R',
@@ -58,18 +63,8 @@ data = {'target': [], **{var: [] for var in kin_vars_keys}}
 # Cut/filter parameters
 jet_pt_cut = float(config['jet_pt_cut'])  # GeV
 missing_pt_cut = float(config['missing_pt_cut'])  # GeV
-
-
-# Wrap all relevant cuts into one function
-def pass_cuts(event):
-
-    # No physical jets
-    cut_1 = not util.has_physical_jets(event, jet_pt_cut)
-
-    # Lower bound on missing pt
-    cut_2 = util.get_missing_pt(event) > missing_pt_cut
-
-    return cut_1 and cut_2
+mt2_cut = float(config['mt2_cut'])  # GeV
+mll_cut = float(config['mll_cut'])  # GeV
 
 
 # Iterate through available files
@@ -100,56 +95,65 @@ for f, files in enumerate([LO_files, LO_NLO_files]):
         file_1 = files[0].pop()
         file_2 = files[1].pop()
         print("Combining datasets (%d/%d)..." % (i, number_of_file_pairs))
-        events, num_events = util.combine_LHE_files(file_1, file_2)
-        print(("Running analysis and cuts through "
-               f"{num_events:,} events..."), end='')
+        events = util.combine_LHE_files(file_1, file_2)
 
         for e in events:
 
-            # Check cuts
-            if not pass_cuts(e):
+            event_particles = e.particles
+
+            if util.has_physical_jets(event_particles, jet_pt_cut):
                 continue
 
-            p_invs = util.FourMomentum()
-            p_leptons = []
-            for particle in util.get_final_state_particles(e):
+            # Get pairs of decayed particles (lepton and neutralino)
+            pair_1 = util.get_daughters(1000011, event_particles)
+            pair_1.sort(key=lambda x: x.id)
+            pair_2 = util.get_daughters(-1000011, event_particles)
+            pair_2.sort(key=lambda x: x.id)
+            p_l1, p_invs1 = util.FourMomentum.from_LHEparticles(pair_1)
+            p_l2, p_invs2 = util.FourMomentum.from_LHEparticles(pair_2)
 
-                p = util.FourMomentum.from_LHEparticle(particle)
-
-                # Collect leptons (e+ & e-)
-                if util.is_charged_lepton(particle):
-                    p_leptons.append(p)
-                    continue
-
-                # Missing pt
-                if util.is_invisible(particle):
-                    p_invs = p_invs + p
-                    continue
-
-            # Calculations
-            p_l1, p_l2 = p_leptons
             p_lep_tot = p_l1 + p_l2
+            pt_leps, phi_leps, _ = p_lep_tot.collider_coordinates()
 
             pt_l1, phi_l1, eta_l1 = p_l1.collider_coordinates()
             pt_l2, phi_l2, eta_l2 = p_l2.collider_coordinates()
 
-            pt_leps, phi_leps = p_lep_tot.collider_coordinates()[:2]
-            pt_invs, phi_invs = p_invs.collider_coordinates()[:2]
+            m_invs = p_invs1.norm()
+            p_invs = p_invs1 + p_invs2
+            pt_invs, phi_invs, _ = p_invs.collider_coordinates()
+
             dphi = phi_l2 - phi_l1
             deta = eta_l2 - eta_l1
 
+            # Calculations
             mll = p_lep_tot.norm()
-            delta_R = np.sqrt(dphi*dphi + deta*deta)
+            delta_R = sqrt(dphi**2 + deta**2)
             delta_phi = phi_invs - phi_leps
-            mt = np.sqrt(2*pt_l1*pt_l2*(1. - np.cos(delta_phi)))
+            mt = sqrt(2*pt_l1*pt_l2*(1. - cos(delta_phi)))
+            mt_2 = mt2(
+                0, p_l1.px, p_l1.py,
+                0, p_l2.px, p_l2.py,
+                p_invs.px, p_invs.py,
+                m_invs, m_invs
+            )
             ht = pt_l1 + pt_l2
             met_ht_ratio = pt_invs/ht
+
+            # Apply HLF cuts
+            if (
+                mll < mll_cut or
+                mt_2 < mt2_cut or
+                pt_invs < missing_pt_cut
+            ):
+                continue
 
             # NOTE: elements must be in same order as data dictionary
             kin_vars = [
                 mll,
                 mt,
+                mt_2,
                 ht,
+                pt_invs,
                 met_ht_ratio,
                 delta_phi,
                 delta_R,
@@ -160,10 +164,9 @@ for f, files in enumerate([LO_files, LO_NLO_files]):
             for key, dat in zip(kin_vars_keys, kin_vars):
                 data[key].append(dat)
 
-        print(" Done.")
+        print("Analysis done.")
 
         # Write to output file
-        print("Dumping processed data to %s..." % output_filename, end='')
         df = pd.DataFrame(data)
         df.to_csv(
             output_filename,
@@ -177,8 +180,9 @@ for f, files in enumerate([LO_files, LO_NLO_files]):
         for variabel in data.values():
             variabel.clear()
 
-        print(" Done.")
         write_header = False
+
+        print("Processed data dumped to %s." % output_filename)
 
     if ans == 'y':
         print("Combination and analysis successful.")

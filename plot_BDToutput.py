@@ -1,10 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/python3
+
 import sys
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import xgboost as xgb
 import matplotlib.pyplot as plt
+import xgboost as xgb
 import lib.statistics_tools as st
 
 # Settings for seaborn plots
@@ -23,33 +24,31 @@ custom_style = {
 }
 sns.set_style(custom_style)
 
-if len(sys.argv) != 4:
-
-    print("Please provide exactly two arguments: dataset-label,"
-          "path to LO-csv-dataset, path to LO+NLO-csv-dataset")
-    sys.exit(1)
+if len(sys.argv) != 2:
+    sys.exit("Please provide exactly one argument: dataset-label")
 
 
-# Kinematic variable to plot
-index = "prediction"
 dataset_label = sys.argv[1].upper()
+sub_strings = dataset_label.split("_")
+m_sl = int(sub_strings[0][2:])
+m_n = int(sub_strings[1][1:])
+features = sub_strings[2]
 
 # BDT model to load
 model_file = "/home/sunde/University/master_project/data/BDT_models/model_"\
-             + dataset_label + ".model"
+             + features + ".model"
 
-# Datasets from BDT
-if dataset_label not in sys.argv[2] or dataset_label not in sys.argv[3]:
-    sys.exit("Chosen BDT model doesn't match datasets.")
-
-df_LO = pd.read_csv(sys.argv[2])
-df_LO_NLO = pd.read_csv(sys.argv[3])
+path = "/home/sunde/University/master_project/data/processed_data/output_data/"
+LO_file = path + "LO_predictions_" + dataset_label + ".csv.gz"
+LO_NLO_file = path + "LO+NLO_predictions_" + dataset_label + ".csv.gz"
+df_LO = pd.read_csv(LO_file)
+df_LO_NLO = pd.read_csv(LO_NLO_file)
 
 # Event dataset for D_KL calculation
 event_file = "../data/processed_data/input_data/dataset_"\
     + dataset_label + ".csv.gz"
 event_dataset = pd.read_csv(event_file)
-event_dataset = event_dataset.sample(frac=.02).reset_index(drop=True)
+event_dataset = event_dataset.sample(frac=.15).reset_index(drop=True)
 event_dataset = event_dataset[event_dataset['target'] == 1.]
 event_dataset = event_dataset.iloc[:, 1:]
 
@@ -62,21 +61,20 @@ fig, axes = plt.subplots(
 )
 X_LABEL = "BDT output"
 Y_LABEL = "Density"
-TITLE = r"$pp\rightarrow$ -11 1000022 11 1000022 j "\
-        r"electroweak, $\sqrt{s} = 13$TeV"
-TITLE = "Dislepton production, " + r"$\sqrt{s} = 13$TeV"
+TITLE = "Dislepton production event classification, %s" % features
 
-fig.suptitle(TITLE, fontweight='bold')
+fig.suptitle(TITLE)
 axes[0].set_ylabel(Y_LABEL)
 axes[1].set_xlabel(X_LABEL)
 axes[1].set_ylabel(r"relative diff. [$\%$]")
 
 
 # Create fixed binning
-binning = np.linspace(0, 1, 200)
+binning = np.linspace(0, 1, 350)
 x = binning[:-1] + np.diff(binning)/2.
 
 # Bin the data
+index = "prediction"
 binned_df_LO = pd.cut(df_LO[index], bins=binning).value_counts(sort=False)
 binned_df_LO_NLO = pd.cut(
     df_LO_NLO[index], bins=binning).value_counts(sort=False)
@@ -118,19 +116,23 @@ q = q[indices]
 lpq = 0.
 N = len(q)
 for i in range(N):
-    if np.isclose(q[i], 0.):
+    mask1 = np.isclose(q[i], 0.)
+    mask2 = np.isclose(p[i], 0.)
+    if mask1 or mask2:
         continue
+
     lpq += np.log(p[i]/q[i])
 
 avg_DKL = lpq/N
-print("Average D_KL from p: %.3e bits" % (avg_DKL/np.log(2.)))
-exit(1)
+print("Average D_KL from p: %.2e bits" % (avg_DKL/np.log(2.)))
+
+
 # Plot cum. KL-div
-second_yaxis = axes[0].twinx()
-sns.lineplot(x=kl_xvals[:-1], y=kl_div_cum, color='g',
-             alpha=0.5, lw=1, ax=second_yaxis, label=r'cum. $D_{KL}$')
-second_yaxis.legend(loc='lower right')
-second_yaxis.set_ylabel(r"$D_{KL}$")
+# second_yaxis = axes[0].twinx()
+# sns.lineplot(x=kl_xvals[:-1], y=kl_div_cum, color='g',
+#             alpha=0.5, lw=1, ax=second_yaxis, label=r'cum. $D_{KL}$')
+# second_yaxis.legend(loc='lower right')
+# second_yaxis.set_ylabel(r"$D_{KL}$")
 
 # Plot histograms along chosen column from datasets (x=index)
 sns.histplot(data=df_LO, x=index, bins=binning, ax=axes[0],
@@ -146,10 +148,14 @@ axes[1].axhline(0., ls='--')
 axes[0].legend()
 axes[0].annotate(st.KL_div_legend_title(kl_div, 'bits'),
                  xy=(0.05, 0.95), xycoords='axes fraction')
-axes[0].annotate(f"# LO predictions: {df_LO.shape[0]:,}", xy=(
-    0.05, 0.90), xycoords='axes fraction')
+axes[0].annotate(r"Marginal $D_{KL}$: %.2e bits" % (avg_DKL/np.log(2.)),
+                 xy=(0.05, 0.88), xycoords='axes fraction')
+axes[0].annotate(f"# LO predictions: {df_LO.shape[0]:,}",
+                 xy=(0.50, 0.95), xycoords='axes fraction')
 axes[0].annotate(f"# LO+NLO predictions: {df_LO_NLO.shape[0]:,}",
-                 xy=(0.05, 0.85), xycoords='axes fraction')
+                 xy=(0.50, 0.88), xycoords='axes fraction')
+axes[0].annotate(r"M($\tilde{e}$, $\tilde{\chi}_1^0$): (%i, %i) GeV" % (m_sl, m_n),
+                 xy=(0.50, 0.81), xycoords='axes fraction')
 
 axes[0].grid()
 axes[1].grid()

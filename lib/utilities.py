@@ -1,14 +1,14 @@
-import numpy as np
-import pylhe as lhe
+from math import sqrt, atan2, log, isclose
+
 import lib.mssm_particles as mssm
 
 
 class FourMomentum:
-    def __init__(self, e=0, px=0, py=0, pz=0):
+    def __init__(self, e=0., px=0., py=0., pz=0.):
         """
-        NOTE: Working in natural units (hbar = c = 1) by default
+        NOTE: Working in natural units (hbar = c = 1) by default.
 
-        :param  e: Energy
+        :param e : Energy
         :param px: x-comp 3-momentum
         :param py: y-comp 3-momentum
         :param pz: z-comp 3-momentum
@@ -23,95 +23,84 @@ class FourMomentum:
         Define multiplication between two FourMomentum objects p1 and p2
         (contraction p1_mu * p2^mu)
         """
-        p1 = self.three_momentum()
-        p2 = p.three_momentum()
-        return self.e * p.e - np.dot(p1, p2)
+        return self.e*p.e - self.px*p.px - self.py*p.py - self.pz*p.pz
 
     def __rmul__(self, scalar):
-        self.e *= scalar
-        self.px *= scalar
-        self.py *= scalar
-        self.pz *= scalar
-        return self
+        """
+        Define scalar multiplication on a FourMomentum object p (scaling)
+        """
+        e = scalar*self.e
+        px = scalar*self.px
+        py = scalar*self.py
+        pz = scalar*self.pz
+        return FourMomentum(e, px, py, pz)
 
     def __add__(self, p):
         """
         Define addition between two FourMomentum objects p1 and p2
         (p1 + p2)
         """
-        new_p = FourMomentum()
-        new_p.e = self.e + p.e
-        new_p.px = self.px + p.px
-        new_p.py = self.py + p.py
-        new_p.pz = self.pz + p.pz
-        return new_p
+        e = self.e + p.e
+        px = self.px + p.px
+        py = self.py + p.py
+        pz = self.pz + p.pz
+        return FourMomentum(e, px, py, pz)
 
     def __sub__(self, p):
         """
         Define subtraction between two FourMomentum objects p1 and p2
         (p1 - p2)
         """
-        return self + (-1.0 * p)
-
-    def components(self):
-        """
-        Return components of the four-momentum as np.array
-        """
-        return np.array([self.e, self.px, self.py, self.pz])
+        return self + -1.*p
 
     def norm(self):
         """
         Return the norm of a four vector p: sqrt(p * p) (= particle mass)
         """
-        return np.sqrt(self * self)
+        return sqrt(self*self)
 
-    def three_momentum(self):
+    def as_list(self):
         """
-        Spatial part of the four momentum (three-momentum)
+        Return components as a Python list
         """
-        return np.array([self.px, self.py, self.pz])
+        return [self.e, self.px, self.py, self.pz]
 
-    def transverse_momentum(self, vector_out=False):
+    def transverse_momentum(self):
         """
         Get transverse momentum pT
         (xy-plane is conventionally the transverse plane, beam axis along z)
 
         Return components or the magnitude.
         """
-        pt = np.array([self.px, self.py])
-
-        return pt if vector_out else np.sqrt(pt.dot(pt))
+        return sqrt(self.px**2 + self.py**2)
 
     def collider_coordinates(self):
         """
         Calculates pt, phi and eta (pseudo-rapidity) and return them
-        as an array.
+        as a tuple.
 
         Collider representation of three momentum.
 
         tan^2 (theta/2) = (p - p_z)/(p + p_z)
         """
-        p = self.three_momentum()
-        p = np.sqrt(p.dot(p))
+        p = sqrt(self.px**2 + self.py**2 + self.pz**2)
 
-        pt = self.transverse_momentum()
-        phi = np.arctan2(self.py, self.px)
-        eta = .5*np.log((p + self.pz)/(p - self.pz))
+        pt = sqrt(self.px**2 + self.py**2)
+        phi = atan2(self.py, self.px)
+        eta = .5*log((p + self.pz)/(p - self.pz))
 
-        return np.array([pt, phi, eta])
+        return pt, phi, eta
 
     def print(self, unit_e='GeV', unit_p='GeV'):
         """
         A method to print the FourMomentum in a nice way (with units of choice)
         """
-        for mu in ['e', 'px', 'py', 'pz']:
-            attribute = getattr(self, mu)
-            if mu == 'e':
-                print("%s : %e %s" % (mu, attribute, unit_e))
-            else:
-                print("%s: %e %s" % (mu, attribute, unit_p))
+        print("%s :  %.6e %s" % ('e', self.e, unit_e))
+        print("%s:  %.6e %s" % ('px', self.px, unit_p))
+        print("%s:  %.6e %s" % ('py', self.py, unit_p))
+        print("%s:  %.6e %s" % ('pz', self.pz, unit_p))
 
-    @staticmethod
+    @ staticmethod
     def from_LHEparticle(lhe_particle):
         """
         Construct a FourMomentum object from a pyhle-particle object
@@ -123,7 +112,7 @@ class FourMomentum:
         pz = lhe_particle.pz
         return FourMomentum(e, px, py, pz)
 
-    @staticmethod
+    @ staticmethod
     def from_LHEparticles(lhe_particles):
         """
         Construct a list of FourMomentum objects from a list of lhe-particles
@@ -153,7 +142,7 @@ def is_onshell(p, m, rtol=1e-2):
     :param tol: tolerance to be on-shell
     :return: True if onshell, False otherwise
     """
-    return np.isclose(p.norm(), m, rtol=rtol)
+    return isclose(p.norm(), m, rtol=rtol)
 
 
 # LHE tools
@@ -162,9 +151,9 @@ def is_final_state(particle):
     return particle.status == 1
 
 
-def get_final_state_particles(event):
+def get_final_state_particles(event_particles):
 
-    return [p for p in event.particles if is_final_state(p)]
+    return [p for p in event_particles if is_final_state(p)]
 
 
 def get_daughters(parent_pdg, event_particles):
@@ -179,70 +168,62 @@ def get_daughters(parent_pdg, event_particles):
 
 def combine_LHE_files(file_1, file_2):
     """
+
     :param file_1: path to the first lhe-file
     :param file_2: path to the second lhe-file
 
     return: List of events from file_1 and file_2 in proportion to their
     cross sections, resp.
     """
-    events_1 = [e for e in lhe.readLHE(file_1)]
+    import pylhe as lhe
+    from random import random
+    
+    events_1 = lhe.readLHE(file_1)
     events_1_init = lhe.readLHEInit(file_1)
     events_1_info = events_1_init['procInfo'][0]
     xsec_1 = events_1_info["xSection"]
-    n1 = len(events_1)
+    n1 = lhe.readNumEvents(file_1)
     print(f'Dataset 1 initialised ({n1:,} events), cross section: {xsec_1:e} pb.')
 
-    events_2 = [e for e in lhe.readLHE(file_2)]
+    events_2 = lhe.readLHE(file_2)
     events_2_init = lhe.readLHEInit(file_2)
     events_2_info = events_2_init['procInfo'][0]
     xsec_2 = events_2_info['xSection']
-    n2 = len(events_2)
+    n2 = lhe.readNumEvents(file_2)
     print(f'Dataset 2 initialised ({n2:,} events), cross section: {xsec_2:e} pb.')
 
     # Sampling probability for dataset 1
     p1 = xsec_1/(xsec_1 + xsec_2)
 
-    events = []
-
     # Main loop (drawing samples while both sets are non empty)
-    while n1 and n2:
+    while True:
 
-        # pick a number 0<x<1 randomly
-        x = np.random.uniform(0., 1.)
-
-        # pick an event depending on x, remove element after selection
-        if x < p1:
-            e = events_1.pop()
-            n1 -= 1
-        else:
-            e = events_2.pop()
-            n2 -= 1
-
-        events.append(e)
-
-    # return combined dataset, number of events (tuple)
-    return events, len(events)
+        # yield an event from 1 or 2 depending on random number between (0,1)
+        try:
+            if random() < p1:
+                yield next(events_1)
+            else:
+                yield next(events_2)
+        except StopIteration:
+            return
 
 
 # Particle tools
 def is_jet(particle):
 
-    return (abs(particle.id) in mssm.jet_hard) and is_final_state(particle)
+    return is_final_state(particle) and (abs(particle.id) in mssm.jet_hard)
 
 
-def get_jets(event):
+def get_jets(event_particles):
 
-    return [p for p in event.particles if is_jet(p)]
+    return [p for p in event_particles if is_jet(p)]
 
 
-def has_physical_jets(event, pt_cut):
+def has_physical_jets(event_particles, pt_cut):
 
-    jets = FourMomentum.from_LHEparticles(get_jets(event))
+    jets = FourMomentum.from_LHEparticles(get_jets(event_particles))
 
-    for jet in jets:
-        if jet.transverse_momentum() > pt_cut:
-            return True
-    return False
+    return any([True for j in jets if j.transverse_momentum() > pt_cut])
 
 
 def is_charged_lepton(particle):
@@ -253,15 +234,3 @@ def is_charged_lepton(particle):
 def is_invisible(particle):
 
     return abs(particle.id) in mssm.invisible_particles
-
-
-# Common high level kinematic variables
-def get_missing_pt(event):
-
-    invs_p = [p for p in get_final_state_particles(event) if is_invisible(p)]
-
-    momenta = FourMomentum.from_LHEparticles(invs_p)
-
-    pT = sum([p.transverse_momentum(vector_out=True) for p in momenta])
-
-    return np.linalg.norm(pT)

@@ -1,11 +1,11 @@
 #!/usr/bin/python3
 import os
 import sys
-import numpy as np
-import pandas as pd
-import lib.utilities as util
-import lib.config_parser as parse
 
+import pandas as pd
+
+import lib.config_parser as parse
+import lib.utilities as util
 
 # Parse config file with paths/cuts
 config = parse.read_config_file(sys.argv[1])
@@ -57,15 +57,6 @@ data = {'target': [], 'features': []}
 jet_pt_cut = float(config['jet_pt_cut_GeV'])
 
 
-# Wrap all relevant cuts into one function
-def pass_cuts(event):
-
-    # No physical jets
-    cut_1 = not util.has_physical_jets(event, jet_pt_cut)
-
-    return cut_1
-
-
 # Iterate through available files
 write_header = True
 
@@ -94,45 +85,41 @@ for f, files in enumerate([LO_files, LO_NLO_files]):
         file_1 = files[0].pop()
         file_2 = files[1].pop()
         print("Combining datasets (%d/%d)..." % (i, number_of_file_pairs))
-        events, num_events = util.combine_LHE_files(file_1, file_2)
-        print(("Running analysis and cuts through "
-              f"{num_events:,} events..."), end='')
+        events = util.combine_LHE_files(file_1, file_2)
 
         for e in events:
 
-            # Apply general cuts/filters
-            if not pass_cuts(e):
+            event_particles = e.particles
+
+            # Apply LLF cuts/filters
+            if util.has_physical_jets(event_particles, jet_pt_cut):
                 continue
 
             # Collect daughter products from sleptons
             #  1000011 -->  11 1000022
             # -1000011 --> -11 1000022
-            slep_daugthers = []
-            aslep_daugthers = []
 
             # This will yield [11, 1000022]
-            slep_daugthers = util.get_daughters(1000011, e.particles)
+            slep_daugthers = util.get_daughters(1000011, event_particles)
             slep_daugthers.sort(key=lambda x: x.id)
             # This will yield [-11, 1000022]
-            aslep_daugthers = util.get_daughters(-1000011, e.particles)
+            aslep_daugthers = util.get_daughters(-1000011, event_particles)
             aslep_daugthers.sort(key=lambda x: x.id)
 
             # Get the four momenta components (np.arrays)
             em, n1_1 = util.FourMomentum.from_LHEparticles(slep_daugthers)
             ep, n1_2 = util.FourMomentum.from_LHEparticles(aslep_daugthers)
 
-            em, n1_1 = em.components(), n1_1.components()
-            ep, n1_2 = ep.components(), n1_2.components()
-
-            feature_row = np.concatenate((em, ep, n1_1, n1_2), axis=None)
+            feature_row = [em.e, em.px, em.py, em.pz, 
+                           ep,e, ep.px, ep.py, ep.pz,
+                           n1_1.e, n1_1.px, n1_1.py, n1_1.pz,
+                           n1_2.e, n1_2.px, n1_2.py, n1_2.pz,
+                           ]
 
             data['features'].append(feature_row)
             data['target'].append(f)
 
-        print(" Done.")
-
-        # Write to output file
-        print("Dumping processed data to %s..." % output_filename, end='')
+        print("Analysis done.")
 
         # Create final dataframe to write to csv -- 'target' as first column
         df0 = pd.DataFrame(data['target'], columns=['target'])
@@ -148,11 +135,12 @@ for f, files in enumerate([LO_files, LO_NLO_files]):
             float_format='%.6e'
         )
 
+        # Write to output file
+        print("Processed data dumped to %s." % output_filename)
+
         data['target'].clear()
         data['features'].clear()
         write_header = False
-
-        print(" Done.")
 
     if ans == 'y':
         print("Combination and analysis successful.")

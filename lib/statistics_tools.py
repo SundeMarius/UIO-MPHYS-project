@@ -114,8 +114,8 @@ def KL_div(P, Q, base_two=False):
 
 def KL_div_legend_title(kl_divergence, unit='nats'):
 
-    return r'$D_{KL}$$\left(\mathrm{LO+NLO}\mid'\
-           r'\mathrm{LO}\right)$: %1.2e ' % kl_divergence + unit
+    num = str()
+    return r'$D_{KL}$$\left(\mathrm{LO+NLO}\mid\mathrm{LO}\right)$: %.2e' % kl_divergence + unit
 
 
 # Earth movers distance

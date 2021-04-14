@@ -8,100 +8,104 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import train_test_split
 
-input_file = sys.argv[1]
+dataset_label = sys.argv[1].upper()
+input_file = sys.argv[2]
 
-dataset = pd.read_csv(input_file, dtype=float, header=0, low_memory=False)
-dataset = dataset.sample(frac=1).reset_index(drop=True)
-
-X, y = dataset.iloc[:, 1:], dataset.iloc[:, 0]
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-
-
-# XGBOOST
-dtrain = xgb.DMatrix(
-    X_train.to_numpy(),
-    label=y_train.to_numpy(),
-    feature_names=X.columns
-)
-dtest = xgb.DMatrix(
-    X_test.to_numpy(),
-    label=y_test.to_numpy(),
-    feature_names=X.columns
-)
-
-evaluation = [(dtrain, 'train'), (dtest, 'test')]
+if not dataset_label in input_file:
+    sys.exit("Chosen dataset label doesn't match the dataset.")
 
 
 # Training parameters
-learning_rate = np.linspace(1.e-2, 5.e-1, 12)
-max_depth = list(range(3, 12))
-num_rounds = 140
+learning_rate = np.round(np.linspace(1.e-2, 5.e-1, 12), 2)
+max_depth = list(range(3, 10))
+n1, n2 = len(learning_rate), len(max_depth)
+num_rounds = 200
 
-logger = "BDT_tuning_logger.txt"
+logger = "BDT_tuning_logger_" + dataset_label + ".txt"
+output_fn = "test_auc_scores_" + dataset_label + ".txt"
+data = np.zeros((n1, n2))
 
-if os.path.isfile(logger):
+if os.path.isfile(logger) and os.path.isfile(output_fn):
 
     ans = input("%s already exists. Overwrite? (y,N): " % logger).lower()
 
-    if ans != 'y':
-        sys.exit("Program terminated by user.")
+    if ans == 'y':
 
+        with open(logger, 'w') as f:
 
-with open(logger, 'w') as f:
+            from datetime import datetime
+            now = datetime.now()
+            dt_string = now.ctime()
 
-    from datetime import datetime
-    now = datetime.now()
-    dt_string = now.ctime()
-
-    line = "BDT tuning logger -- program started: %s\n" % dt_string
-    f.write(line)
-    f.write(len(line)*'-' + '\n')
-
-    n1, n2 = len(learning_rate), len(max_depth)
-    number_of_points = n1*n2
-
-    c = 1
-    data = np.zeros((n1, n2))
-    for i, eta in enumerate(learning_rate):
-
-        for j, depth in enumerate(max_depth):
-
-            print("lr, depth: %.2f, %d" % (eta, depth))
-            results = {}
-            param = {
-                'max_depth': depth,
-                'eta': eta,
-                'verbosity': 1,
-                'objective': 'binary:logistic',
-                'eval_metric': 'auc',
-                'tree_method': 'hist',
-            }
-
-            bst = xgb.train(param, dtrain,
-                            num_rounds,
-                            evals=evaluation,
-                            evals_result=results,
-                            early_stopping_rounds=10)
-
-            auc_train = float(results['train']['auc'][-1])
-            auc_test = float(results['test']['auc'][-1])
-
-            data[i][j] = auc_test
-
-            line = f"auc_train: {auc_train:.3e}, auc_test: {auc_test:.3e}\n"
+            line = "BDT tuning logger -- program started: %s\n" % dt_string
             f.write(line)
+            f.write(len(line)*'-' + '\n')
 
-            print("%d/%d done" % (c, number_of_points))
-            c += 1
 
-        f.write(len(line)*'-'+'\n')
+            dataset = pd.read_csv(input_file, dtype=float, header=0, low_memory=False)
+            dataset = dataset.sample(frac=1).reset_index(drop=True)
 
-    now = datetime.now()
-    dt_string = now.ctime()
-    f.write("BDT tuning logger -- program ended: %s" % dt_string)
+            X, y = dataset.iloc[:, 1:], dataset.iloc[:, 0]
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
-    output_fn = "test_auc_scores.txt"
-    np.savetxt(output_fn, data, fmt='%.3e')
+            # XGBOOST
+            dtrain = xgb.DMatrix(
+                X_train.to_numpy(),
+                label=y_train.to_numpy(),
+                feature_names=X.columns
+            )
+            dtest = xgb.DMatrix(
+                X_test.to_numpy(),
+                label=y_test.to_numpy(),
+                feature_names=X.columns
+            )
+
+            evaluation = [(dtrain, 'train'), (dtest, 'test')]
+
+            number_of_points = n1*n2
+
+            c = 1
+            for i, eta in enumerate(learning_rate):
+
+                for j, depth in enumerate(max_depth):
+
+                    print("lr, depth: %.2f, %d" % (eta, depth))
+                    results = {}
+                    param = {
+                        'max_depth': depth,
+                        'eta': eta,
+                        'verbosity': 1,
+                        'objective': 'binary:logistic',
+                        'eval_metric': 'auc',
+                        'tree_method': 'hist',
+                    }
+
+                    bst = xgb.train(param, dtrain,
+                                    num_rounds,
+                                    evals=evaluation,
+                                    evals_result=results,
+                                    early_stopping_rounds=15)
+
+                    auc_train = float(results['train']['auc'][-1])
+                    auc_test = float(results['test']['auc'][-1])
+
+                    data[i][j] = auc_test
+
+                    line = f"auc_train: {auc_train:.3e}, auc_test: {auc_test:.3e}\n"
+                    f.write(line)
+
+                    print("%d/%d done" % (c, number_of_points))
+                    c += 1
+
+                f.write(len(line)*'-'+'\n')
+
+            now = datetime.now()
+            dt_string = now.ctime()
+            f.write("BDT tuning logger -- program ended: %s" % dt_string)
+
+            np.savetxt(output_fn, data, fmt='%.3e')
+    else:
+        data = np.loadtxt(output_fn)
 
 xlabels = [str(c) for c in max_depth]
 ylabels = [str(c) for c in learning_rate]
