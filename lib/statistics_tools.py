@@ -114,8 +114,7 @@ def KL_div(P, Q, base_two=False):
 
 def KL_div_legend_title(kl_divergence, unit='nats'):
 
-    num = str()
-    return r'$D_{KL}$$\left(\mathrm{LO+NLO}\mid\mathrm{LO}\right)$: %.2e' % kl_divergence + unit
+    return r'$D_{KL}$$\left(\mathrm{p}_s||\mathrm{q}_s\right)$: %.1e ' % kl_divergence + unit
 
 
 # Earth movers distance
@@ -168,3 +167,25 @@ def calculate_relative_difference(series1, series2):
     rel_diff_uncertainty = dx1/x1 * np.sqrt((x2/x1)**2 + (dx2/dx1)**2)
 
     return rel_diff, rel_diff_uncertainty
+
+def calculate_log_difference(series1, series2, base=np.e):
+
+    # Get stddev of bin counts (assuming Poisson process)
+    ones = np.ones(series1.shape[0])
+    std1 = np.maximum(np.sqrt(series1), ones)
+    std2 = np.maximum(np.sqrt(series2), ones)
+
+    c1 = np.sum(series1)
+    c2 = np.sum(series2)
+    x1, x2 = series1/c1, series2/c2
+    # Calculate log difference and the uncertainty in the bin counts
+    r = np.divide(x2, x1, out=np.ones_like(x2), where=x1>1e-8)
+    log_diff = np.log(r, where=r>1e-12)
+
+    s1 = np.divide(std1, series1, out=np.zeros_like(std1), where=series1>0)
+    s2 = np.divide(std2, series2, out=np.zeros_like(std2), where=series2>0)
+
+    # From error propagating "log_diff" wrt. series1 and series2 (uncert. std1 and std2 resp.):
+    log_diff_uncertainty = np.sqrt(s1**2 + s2**2)
+
+    return log_diff/np.log(base), log_diff_uncertainty/np.log(base)

@@ -101,6 +101,7 @@ for f, files in enumerate([LO_files, LO_NLO_files]):
 
             event_particles = e.particles
 
+            # base cut
             if util.has_physical_jets(event_particles, jet_pt_cut):
                 continue
 
@@ -129,7 +130,7 @@ for f, files in enumerate([LO_files, LO_NLO_files]):
             mll = p_lep_tot.norm()
             delta_R = sqrt(dphi**2 + deta**2)
             delta_phi = phi_invs - phi_leps
-            mt = sqrt(2*pt_l1*pt_l2*(1. - cos(delta_phi)))
+            mt = sqrt(2*pt_leps*pt_invs*(1. - cos(delta_phi)))
             mt_2 = mt2(
                 0, p_l1.px, p_l1.py,
                 0, p_l2.px, p_l2.py,
@@ -140,12 +141,12 @@ for f, files in enumerate([LO_files, LO_NLO_files]):
             met_ht_ratio = pt_invs/ht
 
             # Apply HLF cuts
-            if (
-                mll < mll_cut or
-                mt_2 < mt2_cut or
-                pt_invs < missing_pt_cut
-            ):
-                continue
+            #if (
+            #    mll < mll_cut or
+            #    mt_2 < mt2_cut or
+            #    pt_invs < missing_pt_cut
+            #):
+            #    continue
 
             # NOTE: elements must be in same order as data dictionary
             kin_vars = [

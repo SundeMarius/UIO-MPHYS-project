@@ -51,7 +51,11 @@ class FourMomentum:
         Define subtraction between two FourMomentum objects p1 and p2
         (p1 - p2)
         """
-        return self + -1.*p
+        e = self.e - p.e
+        px = self.px - p.px
+        py = self.py - p.py
+        pz = self.pz - p.pz
+        return FourMomentum(e, px, py, pz)
 
     def norm(self):
         """
@@ -59,11 +63,11 @@ class FourMomentum:
         """
         return sqrt(self*self)
 
-    def as_list(self):
+    def as_tuple(self):
         """
-        Return components as a Python list
+        Return components as a Python tuple
         """
-        return [self.e, self.px, self.py, self.pz]
+        return self.e, self.px, self.py, self.pz
 
     def transverse_momentum(self):
         """
@@ -216,7 +220,7 @@ def is_jet(particle):
 
 def get_jets(event_particles):
 
-    return [p for p in event_particles if is_jet(p)]
+    return (p for p in event_particles if is_jet(p))
 
 
 def has_physical_jets(event_particles, pt_cut):

@@ -50,7 +50,8 @@ attributes = ['e', 'px', 'py', 'pz']
 kinematic_variables = sum([[p+'_'+v for v in attributes]
                            for p in particle_pdgs], [])
 
-data = {'target': [], 'features': []}
+feature_data = {var:[] for var in kinematic_variables}
+data = {'target': [], **feature_data}
 
 
 # Cut/filter parameters
@@ -91,7 +92,7 @@ for f, files in enumerate([LO_files, LO_NLO_files]):
 
             event_particles = e.particles
 
-            # Apply LLF cuts/filters
+            # Apply base cut
             if util.has_physical_jets(event_particles, jet_pt_cut):
                 continue
 
@@ -106,40 +107,41 @@ for f, files in enumerate([LO_files, LO_NLO_files]):
             aslep_daugthers = util.get_daughters(-1000011, event_particles)
             aslep_daugthers.sort(key=lambda x: x.id)
 
-            # Get the four momenta components (np.arrays)
             em, n1_1 = util.FourMomentum.from_LHEparticles(slep_daugthers)
             ep, n1_2 = util.FourMomentum.from_LHEparticles(aslep_daugthers)
 
+            # NOTE: elements must be in same order as data dictionary
             feature_row = [em.e, em.px, em.py, em.pz, 
-                           ep,e, ep.px, ep.py, ep.pz,
+                           ep.e, ep.px, ep.py, ep.pz,
                            n1_1.e, n1_1.px, n1_1.py, n1_1.pz,
                            n1_2.e, n1_2.px, n1_2.py, n1_2.pz,
                            ]
 
-            data['features'].append(feature_row)
             data['target'].append(f)
+
+            # Append results to data structure
+            for key, dat in zip(kinematic_variables, feature_row):
+                data[key].append(dat)
 
         print("Analysis done.")
 
-        # Create final dataframe to write to csv -- 'target' as first column
-        df0 = pd.DataFrame(data['target'], columns=['target'])
-        df = pd.DataFrame(data['features'], columns=kinematic_variables)
-
-        df = pd.concat([df0, df], axis=1)
-
+        # Write to output file
+        df = pd.DataFrame(data)
         df.to_csv(
             output_filename,
             header=write_header,
+            float_format='%.6e',
             index=False,
-            mode='a',
-            float_format='%.6e'
+            mode='a'
         )
+
+        # Empty data lists for next iteration
+        for variabel in data.values():
+            variabel.clear()
 
         # Write to output file
         print("Processed data dumped to %s." % output_filename)
 
-        data['target'].clear()
-        data['features'].clear()
         write_header = False
 
     if ans == 'y':
